@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  php-fpm:
+    build:
+      context: ./docker/php
+    volumes:
+      - ./backend:/var/www/html
+    networks:
+      - bringo_net
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://app:!ChangeMe!@postgres:5432/app?serverVersion=16&charset=utf8}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - MAILER_DSN=${MAILER_DSN:-smtp://mailpit:1025}
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php-fpm
+    networks:
+      - bringo_net
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: "!ChangeMe!"
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bringo_net
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - bringo_net
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - bringo_net
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host"
+    networks:
+      - bringo_net
+
+volumes:
+  postgres_data:
+
+networks:
+  bringo_net:
+    driver: bridge
