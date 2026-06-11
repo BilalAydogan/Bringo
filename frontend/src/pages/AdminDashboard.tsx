@@ -884,6 +884,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        <div className="mt-8">
+          <Link to="/" className="text-sm text-neutral-400 hover:text-white transition-colors">
+            {t('common.backToHome')}
+          </Link>
+        </div>
+
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-800 bg-neutral-950/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl sm:hidden">
           <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
             {[
