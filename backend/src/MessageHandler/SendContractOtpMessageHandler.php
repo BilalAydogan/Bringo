@@ -7,6 +7,7 @@ use App\Service\EmailTemplateRenderer;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Email;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[AsMessageHandler]
 final class SendContractOtpMessageHandler
@@ -14,47 +15,61 @@ final class SendContractOtpMessageHandler
     public function __construct(
         private MailerInterface $mailer,
         private EmailTemplateRenderer $emailTemplateRenderer,
+        private TranslatorInterface $translator,
     ) {
     }
 
     public function __invoke(SendContractOtpMessage $message): void
     {
+        $locale = $this->normalizeLocale($message->locale);
+
         $email = (new Email())
             ->from('Bringo <noreply@bringo.test>')
             ->to($message->email)
-            ->subject('Bringo sözleşme onay kodunuz')
+            ->subject($this->translator->trans('email.contract.subject', [], 'messages', $locale))
             ->html($this->emailTemplateRenderer->render(
-                title: 'Sözleşme onay kodunuz',
-                intro: sprintf('%s sözleşmesini onaylamak için aşağıdaki kodu kullanın.', $message->contractTitle),
+                title: $this->translator->trans('email.contract.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.contract.intro', ['%contract%' => $message->contractTitle], 'messages', $locale),
                 paragraphs: [
-                    'Bu kod 10 dakika boyunca geçerlidir.',
-                    'Onay işlemini siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.',
+                    $this->translator->trans('email.contract.body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.contract.body_2', [], 'messages', $locale),
                 ],
-                preheader: sprintf('Bringo sözleşme onay kodunuz: %s', $message->code),
+                preheader: $this->translator->trans('email.contract.preheader', ['%code%' => $message->code], 'messages', $locale),
                 code: $message->code,
-                codeLabel: 'Onay kodu',
+                codeLabel: $this->translator->trans('email.contract.code_label', [], 'messages', $locale),
                 details: [
-                    'Sözleşme' => $message->contractTitle,
-                    'Geçerlilik' => '10 dakika',
+                    $this->translator->trans('email.contract.detail_contract_label', [], 'messages', $locale) => $message->contractTitle,
+                    $this->translator->trans('email.contract.detail_validity_label', [], 'messages', $locale) => $this->translator->trans('email.contract.detail_validity_value', [], 'messages', $locale),
                 ],
-                footerNote: 'Kod süresi dolarsa Bringo içinden yeni bir kod isteyebilirsiniz.',
+                footerNote: $this->translator->trans('email.contract.footer_note', [], 'messages', $locale),
+                documentLocale: $locale,
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                securityBanner: $this->translator->trans('email.brand.security', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
             ))
             ->text($this->emailTemplateRenderer->renderText(
-                title: 'Sözleşme onay kodunuz',
-                intro: sprintf('%s sözleşmesini onaylamak için aşağıdaki kodu kullanın.', $message->contractTitle),
+                title: $this->translator->trans('email.contract.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.contract.intro', ['%contract%' => $message->contractTitle], 'messages', $locale),
                 paragraphs: [
-                    'Bu kod 10 dakika boyunca geçerlidir.',
-                    'Onay işlemini siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.',
+                    $this->translator->trans('email.contract.body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.contract.body_2', [], 'messages', $locale),
                 ],
                 code: $message->code,
-                codeLabel: 'Onay kodu',
+                codeLabel: $this->translator->trans('email.contract.code_label', [], 'messages', $locale),
                 details: [
-                    'Sözleşme' => $message->contractTitle,
-                    'Geçerlilik' => '10 dakika',
+                    $this->translator->trans('email.contract.detail_contract_label', [], 'messages', $locale) => $message->contractTitle,
+                    $this->translator->trans('email.contract.detail_validity_label', [], 'messages', $locale) => $this->translator->trans('email.contract.detail_validity_value', [], 'messages', $locale),
                 ],
-                footerNote: 'Kod süresi dolarsa Bringo içinden yeni bir kod isteyebilirsiniz.',
+                footerNote: $this->translator->trans('email.contract.footer_note', [], 'messages', $locale),
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
             ));
 
         $this->mailer->send($email);
+    }
+
+    private function normalizeLocale(string $locale): string
+    {
+        return str_starts_with(strtolower($locale), 'en') ? 'en' : 'tr';
     }
 }

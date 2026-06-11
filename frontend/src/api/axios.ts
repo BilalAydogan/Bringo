@@ -1,4 +1,10 @@
 import axios from 'axios';
+import i18n from '../i18n';
+
+type QueuedRequest = {
+  resolve: (token: string | null) => void;
+  reject: (error: unknown) => void;
+};
 
 const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
@@ -12,18 +18,22 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    const locale = i18n.resolvedLanguage || i18n.language || 'tr';
+
+    config.headers = config.headers ?? {};
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers['Accept-Language'] = locale;
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let failedQueue: QueuedRequest[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -34,10 +44,18 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+const isAuthEndpoint = (url?: string) => {
+  if (!url) return false;
+  return ['/auth/login', '/auth/verify-2fa', '/auth/register'].some((endpoint) =>
+    url.includes(endpoint),
+  );
+};
+
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url ?? '';
 
     if (
       error.response?.status === 403 &&
@@ -49,6 +67,10 @@ axiosInstance.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isAuthEndpoint(requestUrl)) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
@@ -68,14 +90,24 @@ axiosInstance.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(error);
       }
 
       try {
-        const { data } = await axios.post(`${baseURL}/auth/refresh`, {
-          refresh_token: refreshToken,
-        });
+        const { data } = await axios.post(
+          `${baseURL}/auth/refresh`,
+          {
+            refresh_token: refreshToken,
+          },
+          {
+            headers: {
+              'Accept-Language': i18n.resolvedLanguage || i18n.language || 'tr',
+            },
+          },
+        );
 
         localStorage.setItem('token', data.token);
         if (data.refresh_token) {
@@ -99,7 +131,7 @@ axiosInstance.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default axiosInstance;

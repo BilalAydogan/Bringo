@@ -4,9 +4,11 @@ namespace App\Service;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class EmailVerifier
 {
@@ -14,11 +16,14 @@ class EmailVerifier
         private MailerInterface $mailer,
         private EntityManagerInterface $entityManager,
         private EmailTemplateRenderer $emailTemplateRenderer,
+        private TranslatorInterface $translator,
+        private RequestStack $requestStack,
     ) {
     }
 
-    public function sendEmailConfirmation(User $user): void
+    public function sendEmailConfirmation(User $user, ?string $locale = null): void
     {
+        $locale = $this->resolveLocale($locale);
         $token = Uuid::v4()->toRfc4122();
         $user->setVerificationToken($token);
 
@@ -27,88 +32,120 @@ class EmailVerifier
 
         // In a real application, this URL should point to your frontend
         $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173';
-        $verifyUrl = sprintf('%s/verify-email?token=%s', $frontendUrl, $token);
+        $verifyUrl = sprintf(
+            '%s/verify-email?%s',
+            $frontendUrl,
+            http_build_query([
+                'token' => $token,
+                'lang' => $locale,
+            ])
+        );
 
         $email = (new Email())
             ->from('Bringo <noreply@bringo.test>')
             ->to((string) $user->getEmail())
-            ->subject('Bringo e-posta doğrulama')
+            ->subject($this->translator->trans('email.verification.subject', [], 'messages', $locale))
             ->html($this->emailTemplateRenderer->render(
-                title: 'E-posta adresinizi doğrulayın',
-                intro: 'Bringo hesabınızı kullanmaya başlamak için e-posta adresinizi doğrulamanız gerekiyor.',
+                title: $this->translator->trans('email.verification.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.verification.intro', [], 'messages', $locale),
                 paragraphs: [
-                    'Aşağıdaki butona tıklayarak hesabınızı doğrulayabilirsiniz.',
-                    'Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.',
+                    $this->translator->trans('email.verification.body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.verification.body_2', [], 'messages', $locale),
                 ],
-                preheader: 'Bringo hesabınız için e-posta doğrulama bağlantınız hazır.',
-                greeting: $this->greetingFor($user),
-                ctaLabel: 'E-postamı doğrula',
+                preheader: $this->translator->trans('email.verification.preheader', [], 'messages', $locale),
+                greeting: $this->greetingFor($user, $locale),
+                ctaLabel: $this->translator->trans('email.verification.cta', [], 'messages', $locale),
                 ctaUrl: $verifyUrl,
-                footerNote: 'Güvenliğiniz için doğrulama bağlantısını kimseyle paylaşmayın.',
+                footerNote: $this->translator->trans('email.verification.footer_note', [], 'messages', $locale),
+                documentLocale: $locale,
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                securityBanner: $this->translator->trans('email.brand.security', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
             ))
             ->text($this->emailTemplateRenderer->renderText(
-                title: 'E-posta adresinizi doğrulayın',
-                intro: 'Bringo hesabınızı kullanmaya başlamak için e-posta adresinizi doğrulamanız gerekiyor.',
+                title: $this->translator->trans('email.verification.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.verification.intro', [], 'messages', $locale),
                 paragraphs: [
-                    'Aşağıdaki bağlantıyı açarak hesabınızı doğrulayabilirsiniz.',
-                    'Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.',
+                    $this->translator->trans('email.verification.text_body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.verification.text_body_2', [], 'messages', $locale),
                 ],
-                greeting: $this->greetingFor($user),
-                ctaLabel: 'E-postamı doğrula',
+                greeting: $this->greetingFor($user, $locale),
+                ctaLabel: $this->translator->trans('email.verification.cta', [], 'messages', $locale),
                 ctaUrl: $verifyUrl,
-                footerNote: 'Güvenliğiniz için doğrulama bağlantısını kimseyle paylaşmayın.',
+                footerNote: $this->translator->trans('email.verification.footer_note', [], 'messages', $locale),
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
             ));
 
         $this->mailer->send($email);
     }
 
-    public function send2FaCode(User $user, string $code): void
+    public function send2FaCode(User $user, string $code, ?string $locale = null): void
     {
+        $locale = $this->resolveLocale($locale);
         $email = (new Email())
             ->from('Bringo <noreply@bringo.test>')
             ->to((string) $user->getEmail())
-            ->subject('Bringo giriş doğrulama kodunuz')
+            ->subject($this->translator->trans('email.login.subject', [], 'messages', $locale))
             ->html($this->emailTemplateRenderer->render(
-                title: 'Giriş doğrulama kodunuz',
-                intro: 'Bringo hesabınıza giriş işlemini tamamlamak için aşağıdaki kodu kullanın.',
+                title: $this->translator->trans('email.login.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.login.intro', [], 'messages', $locale),
                 paragraphs: [
-                    'Kod 10 dakika boyunca geçerlidir.',
-                    'Bu giriş denemesini siz yapmadıysanız parolanızı değiştirmenizi öneririz.',
+                    $this->translator->trans('email.login.body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.login.body_2', [], 'messages', $locale),
                 ],
-                preheader: sprintf('Bringo giriş kodunuz: %s', $code),
-                greeting: $this->greetingFor($user),
+                preheader: $this->translator->trans('email.login.preheader', ['%code%' => $code], 'messages', $locale),
+                greeting: $this->greetingFor($user, $locale),
                 code: $code,
-                codeLabel: 'Giriş kodu',
+                codeLabel: $this->translator->trans('email.login.code_label', [], 'messages', $locale),
                 details: [
-                    'Geçerlilik' => '10 dakika',
-                    'İşlem' => 'Hesap girişi',
+                    $this->translator->trans('email.login.detail_validity_label', [], 'messages', $locale) => $this->translator->trans('email.login.detail_validity_value', [], 'messages', $locale),
+                    $this->translator->trans('email.login.detail_action_label', [], 'messages', $locale) => $this->translator->trans('email.login.detail_action_value', [], 'messages', $locale),
                 ],
-                footerNote: 'Bringo ekibi bu kodu sizden hiçbir zaman istemez.',
+                footerNote: $this->translator->trans('email.login.footer_note', [], 'messages', $locale),
+                documentLocale: $locale,
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                securityBanner: $this->translator->trans('email.brand.security', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
             ))
             ->text($this->emailTemplateRenderer->renderText(
-                title: 'Giriş doğrulama kodunuz',
-                intro: 'Bringo hesabınıza giriş işlemini tamamlamak için aşağıdaki kodu kullanın.',
+                title: $this->translator->trans('email.login.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.login.intro', [], 'messages', $locale),
                 paragraphs: [
-                    'Kod 10 dakika boyunca geçerlidir.',
-                    'Bu giriş denemesini siz yapmadıysanız parolanızı değiştirmenizi öneririz.',
+                    $this->translator->trans('email.login.body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.login.body_2', [], 'messages', $locale),
                 ],
-                greeting: $this->greetingFor($user),
+                greeting: $this->greetingFor($user, $locale),
                 code: $code,
-                codeLabel: 'Giriş kodu',
+                codeLabel: $this->translator->trans('email.login.code_label', [], 'messages', $locale),
                 details: [
-                    'Geçerlilik' => '10 dakika',
-                    'İşlem' => 'Hesap girişi',
+                    $this->translator->trans('email.login.detail_validity_label', [], 'messages', $locale) => $this->translator->trans('email.login.detail_validity_value', [], 'messages', $locale),
+                    $this->translator->trans('email.login.detail_action_label', [], 'messages', $locale) => $this->translator->trans('email.login.detail_action_value', [], 'messages', $locale),
                 ],
-                footerNote: 'Bringo ekibi bu kodu sizden hiçbir zaman istemez.',
+                footerNote: $this->translator->trans('email.login.footer_note', [], 'messages', $locale),
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
             ));
 
         $this->mailer->send($email);
     }
 
-    private function greetingFor(User $user): string
+    private function greetingFor(User $user, string $locale): string
     {
         $name = trim(sprintf('%s %s', $user->getFirstName() ?? '', $user->getLastName() ?? ''));
 
-        return $name === '' ? 'Merhaba,' : sprintf('Merhaba %s,', $name);
+        $greeting = $this->translator->trans('email.greeting', ['%name%' => $name], 'messages', $locale);
+
+        return $name === ''
+            ? $this->translator->trans('email.greeting_generic', [], 'messages', $locale)
+            : $greeting;
+    }
+
+    private function resolveLocale(?string $locale): string
+    {
+        $candidate = $locale ?: $this->requestStack->getCurrentRequest()?->getLocale() ?: $this->translator->getLocale();
+        $candidate = strtolower(str_replace('_', '-', $candidate));
+
+        return str_starts_with($candidate, 'en') ? 'en' : 'tr';
     }
 }

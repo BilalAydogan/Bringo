@@ -4,6 +4,8 @@ import axiosInstance from '../api/axios';
 import AppLayout from '../components/AppLayout';
 import { datetimeLocalToIso, toDatetimeLocalValue } from '../utils/date';
 import { ArrowLeft, Loader2, MapPin, Calendar, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { getApiErrorMessage } from '../utils/api';
 
 export default function EventForm() {
   const { id } = useParams();
@@ -17,6 +19,7 @@ export default function EventForm() {
   const [loading, setLoading] = useState(isEdit);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -30,11 +33,11 @@ export default function EventForm() {
         setDate(toDatetimeLocalValue(event.date));
         setLocation(event.location ?? '');
       })
-      .catch((err) => {
-        setError(err.response?.data?.error?.message || 'Etkinlik yüklenemedi.');
+      .catch((error: unknown) => {
+        setError(getApiErrorMessage(error, t('eventForm.loadError')));
       })
       .finally(() => setLoading(false));
-  }, [id, isEdit]);
+  }, [id, isEdit, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,8 +61,8 @@ export default function EventForm() {
         const response = await axiosInstance.post('/events', payload);
         navigate(`/events/${response.data.data.id}`);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Kayıt sırasında bir hata oluştu.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, t('eventForm.submitError')));
     } finally {
       setSubmitting(false);
     }
@@ -77,20 +80,20 @@ export default function EventForm() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-2xl">
         <Link
           to={isEdit && id ? `/events/${id}` : '/'}
           className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Geri
+          {t('eventForm.back')}
         </Link>
 
-        <h2 className="text-3xl font-bold mb-2">
-          {isEdit ? 'Etkinliği Düzenle' : 'Yeni Etkinlik'}
+        <h2 className="mb-2 text-2xl font-bold sm:text-3xl">
+          {isEdit ? t('eventForm.editTitle') : t('eventForm.createTitle')}
         </h2>
         <p className="text-neutral-400 mb-8">
-          {isEdit ? 'Etkinlik bilgilerini güncelleyin.' : 'Yeni bir etkinlik planlayın.'}
+          {isEdit ? t('eventForm.editSubtitle') : t('eventForm.createSubtitle')}
         </p>
 
         {error && (
@@ -101,7 +104,9 @@ export default function EventForm() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-2">Başlık</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              {t('eventForm.titleLabel')}
+            </label>
             <input
               type="text"
               value={title}
@@ -109,12 +114,14 @@ export default function EventForm() {
               required
               maxLength={255}
               className="block w-full px-4 py-3.5 bg-neutral-900 border border-neutral-800 rounded-xl text-neutral-100 placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none"
-              placeholder="Etkinlik başlığı"
+              placeholder={t('eventForm.titlePlaceholder')}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-2">Açıklama</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              {t('eventForm.descriptionLabel')}
+            </label>
             <div className="relative">
               <FileText className="absolute left-4 top-4 w-5 h-5 text-neutral-500" />
               <textarea
@@ -123,13 +130,15 @@ export default function EventForm() {
                 rows={4}
                 maxLength={5000}
                 className="block w-full pl-12 pr-4 py-3.5 bg-neutral-900 border border-neutral-800 rounded-xl text-neutral-100 placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none resize-none"
-                placeholder="Etkinlik açıklaması (isteğe bağlı)"
+                placeholder={t('eventForm.descriptionPlaceholder')}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-2">Tarih ve Saat</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              {t('eventForm.dateLabel')}
+            </label>
             <div className="relative">
               <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
               <input
@@ -143,7 +152,9 @@ export default function EventForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-2">Konum</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              {t('eventForm.locationLabel')}
+            </label>
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
               <input
@@ -152,7 +163,7 @@ export default function EventForm() {
                 onChange={(e) => setLocation(e.target.value)}
                 maxLength={255}
                 className="block w-full pl-12 pr-4 py-3.5 bg-neutral-900 border border-neutral-800 rounded-xl text-neutral-100 placeholder-neutral-500 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none"
-                placeholder="Konum (isteğe bağlı)"
+                placeholder={t('eventForm.locationPlaceholder')}
               />
             </div>
           </div>
@@ -162,7 +173,11 @@ export default function EventForm() {
             disabled={submitting}
             className="w-full py-3.5 px-4 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 transition-all disabled:opacity-70"
           >
-            {submitting ? 'Kaydediliyor...' : isEdit ? 'Güncelle' : 'Oluştur'}
+            {submitting
+              ? t('eventForm.saving')
+              : isEdit
+                ? t('eventForm.submitEdit')
+                : t('eventForm.submitCreate')}
           </button>
         </form>
       </div>

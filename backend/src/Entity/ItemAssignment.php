@@ -29,7 +29,7 @@ class ItemAssignment
     private int $quantity = 1;
 
     #[ORM\Column(length: 50)]
-    private ?string $status = 'assigned';
+    private string $status = 'assigned';
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
@@ -50,7 +50,7 @@ class ItemAssignment
     public function setUser(?User $user): static { $this->user = $user; return $this; }
     public function getQuantity(): int { return $this->quantity; }
     public function setQuantity(int $quantity): static { $this->quantity = $quantity; return $this; }
-    public function getStatus(): ?string { return $this->status; }
+    public function getStatus(): string { return $this->status; }
     public function setStatus(string $status): static { $this->status = $status; return $this; }
     public function getCreatedAt(): ?\DateTimeImmutable { return $this->createdAt; }
 }

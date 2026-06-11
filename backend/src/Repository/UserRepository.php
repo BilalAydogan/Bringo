@@ -29,4 +29,29 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();
     }
+
+    /**
+     * @return User[]
+     */
+    public function findRecent(int $limit = 5): array
+    {
+        return $this->createQueryBuilder('u')
+            ->orderBy('u.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countAdmins(): int
+    {
+        $users = $this->createQueryBuilder('u')
+            ->select('u.roles')
+            ->getQuery()
+            ->getArrayResult();
+
+        return count(array_filter(
+            $users,
+            static fn (array $row) => in_array('ROLE_ADMIN', $row['roles'] ?? [], true),
+        ));
+    }
 }

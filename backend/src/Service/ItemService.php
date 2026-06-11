@@ -13,6 +13,7 @@ use App\Repository\EventParticipantRepository;
 use App\Repository\EventRepository;
 use App\Repository\ItemRepository;
 use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 class ItemService
@@ -21,6 +22,7 @@ class ItemService
         private ItemRepository $itemRepository,
         private EventRepository $eventRepository,
         private EventParticipantRepository $participantRepository,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -81,7 +83,7 @@ class ItemService
     {
         if ($item->getTargetQuantity() !== null) {
             $currentTotal = array_sum(array_map(
-                fn($a) => $a->getQuantity(),
+                fn (ItemAssignment $a) => $a->getQuantity(),
                 $item->getAssignments()->toArray()
             ));
 
@@ -109,7 +111,7 @@ class ItemService
         foreach ($item->getAssignments() as $assignment) {
             if ($assignment->getUser()?->getId()->equals($user->getId())) {
                 $item->removeAssignment($assignment);
-                $this->itemRepository->getEntityManager()->remove($assignment);
+                $this->entityManager->remove($assignment);
             }
         }
         $this->itemRepository->save($item, true);
@@ -118,7 +120,7 @@ class ItemService
     public function updateAssignmentStatus(ItemAssignment $assignment, string $status): ItemAssignment
     {
         $assignment->setStatus($status);
-        $this->itemRepository->getEntityManager()->flush();
+        $this->entityManager->flush();
 
         return $assignment;
     }
@@ -138,9 +140,12 @@ class ItemService
         return $item;
     }
 
+    /**
+     * @param list<array<string, mixed>> $assignments
+     */
     public function reassignItem(Item $item, array $assignments): Item
     {
-        $em = $this->itemRepository->getEntityManager();
+        $em = $this->entityManager;
         $normalizedAssignments = $this->normalizeAssignments($item, $assignments);
         $total = array_sum(array_map(fn (array $assignment) => $assignment['quantity'], $normalizedAssignments));
 
@@ -160,6 +165,10 @@ class ItemService
             }
 
             foreach ($item->getAssignments()->toArray() as $existing) {
+                if (!$existing instanceof ItemAssignment) {
+                    continue;
+                }
+
                 $item->removeAssignment($existing);
                 $em->remove($existing);
             }
@@ -184,7 +193,7 @@ class ItemService
 
     public function completeItem(Item $item): Item
     {
-        $em = $this->itemRepository->getEntityManager();
+        $em = $this->entityManager;
 
         return $em->wrapInTransaction(function () use ($em, $item): Item {
             $em->lock($item, LockMode::PESSIMISTIC_WRITE);
@@ -200,6 +209,9 @@ class ItemService
         });
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function serialize(Item $item): array
     {
         $assignments = [];
@@ -217,7 +229,7 @@ class ItemService
             ];
         }
 
-        $totalAssigned = array_sum(array_map(fn($a) => $a['quantity'], $assignments));
+        $totalAssigned = array_sum(array_map(fn (array $a) => $a['quantity'], $assignments));
 
         return [
             'id' => $item->getId()?->toRfc4122(),
@@ -246,7 +258,8 @@ class ItemService
     }
 
     /**
-     * @return array<int, array{user: User, quantity: int}>
+     * @param list<array<string, mixed>> $assignments
+     * @return list<array{user: User, quantity: int}>
      */
     private function normalizeAssignments(Item $item, array $assignments): array
     {
@@ -255,7 +268,6 @@ class ItemService
             throw new \RuntimeException('Malzeme bir etkinliğe bağlı değil.');
         }
 
-        $em = $this->itemRepository->getEntityManager();
         $normalized = [];
         $seenUserIds = [];
 
@@ -279,7 +291,7 @@ class ItemService
                 throw new \RuntimeException('Atama adedi en az 1 olmalıdır.');
             }
 
-            $user = $em->getRepository(User::class)->find($userId);
+            $user = $this->entityManager->getRepository(User::class)->find($userId);
             if (!$user instanceof User) {
                 throw new \RuntimeException('Atanacak kullanıcı bulunamadı.');
             }

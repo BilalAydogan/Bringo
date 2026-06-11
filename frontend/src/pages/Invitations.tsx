@@ -5,6 +5,10 @@ import AppLayout from '../components/AppLayout';
 import type { Invitation } from '../types/event';
 import { formatEventDate } from '../utils/date';
 import { ArrowLeft, Calendar, Inbox, Loader2, Check, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { getApiErrorMessage } from '../utils/api';
+
+type JoinedEventSummary = Invitation['event'];
 
 type InvitationSection = 'pending' | 'all';
 
@@ -14,6 +18,7 @@ export default function Invitations() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchInvitations = async () => {
@@ -21,40 +26,40 @@ export default function Invitations() {
       setError('');
 
       try {
-        const response = section === 'pending'
-          ? await axiosInstance.get('/events/invitations')
-          : await axiosInstance.get('/events/joined');
+        const response =
+          section === 'pending'
+            ? await axiosInstance.get('/events/invitations')
+            : await axiosInstance.get('/events/joined');
 
-        const data = section === 'pending'
-          ? response.data.data
-          : response.data.data.map((event: any) => ({
-              id: event.id,
-              status: 'accepted',
-              event,
-            }));
+        const data =
+          section === 'pending'
+            ? response.data.data
+            : (response.data.data as JoinedEventSummary[]).map((event) => ({
+                id: event.id,
+                status: 'accepted',
+                event,
+              }));
 
         setItems(data);
-      } catch (err: any) {
-        setError(err.response?.data?.error?.message || 'Davetler yüklenemedi.');
+      } catch (error: unknown) {
+        setError(getApiErrorMessage(error, t('invitations.loadError')));
       } finally {
         setLoading(false);
       }
     };
 
     fetchInvitations();
-  }, [section]);
+  }, [section, t]);
 
   const handleAccept = async (participantId: string) => {
     setProcessing(participantId);
     try {
       await axiosInstance.post(`/events/participants/${participantId}/accept`);
       setItems((prev) =>
-        prev.map((item) =>
-          item.id === participantId ? { ...item, status: 'accepted' } : item,
-        ),
+        prev.map((item) => (item.id === participantId ? { ...item, status: 'accepted' } : item)),
       );
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Davet kabul edilemedi.');
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, t('invitations.acceptError')));
     } finally {
       setProcessing(null);
     }
@@ -65,12 +70,10 @@ export default function Invitations() {
     try {
       await axiosInstance.post(`/events/participants/${participantId}/reject`);
       setItems((prev) =>
-        prev.map((item) =>
-          item.id === participantId ? { ...item, status: 'rejected' } : item,
-        ),
+        prev.map((item) => (item.id === participantId ? { ...item, status: 'rejected' } : item)),
       );
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Davet reddedilemedi.');
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, t('invitations.rejectError')));
     } finally {
       setProcessing(null);
     }
@@ -98,7 +101,9 @@ export default function Invitations() {
       <AppLayout>
         <div className="max-w-2xl mx-auto text-center py-24">
           <p className="text-red-400 mb-6">{error}</p>
-          <Link to="/" className="text-blue-400 hover:text-blue-300">Ana sayfaya dön</Link>
+          <Link to="/" className="text-blue-400 hover:text-blue-300">
+            {t('common.backToHome')}
+          </Link>
         </div>
       </AppLayout>
     );
@@ -106,18 +111,21 @@ export default function Invitations() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white mb-6 transition-colors">
+      <div className="mx-auto max-w-2xl">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-white"
+        >
           <ArrowLeft className="w-4 h-4" />
-          Etkinlikler
+          {t('joinEvent.back')}
         </Link>
 
-        <h2 className="text-3xl font-bold mb-2">Davetler</h2>
+        <h2 className="mb-2 text-2xl font-bold sm:text-3xl">{t('invitations.title')}</h2>
         <p className="text-neutral-400 mb-8">
-          {section === 'pending' ? 'Bekleyen davetlerinizi görüntüleyin ve yönetin.' : 'Katıldığınız etkinlikler.'}
+          {section === 'pending' ? t('invitations.subtitlePending') : t('invitations.subtitleAll')}
         </p>
 
-        <div className="flex gap-2 mb-6">
+        <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setSection('pending')}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
@@ -126,7 +134,7 @@ export default function Invitations() {
                 : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
             }`}
           >
-            Bekleyenler
+            {t('invitations.pending')}
           </button>
           <button
             onClick={() => setSection('all')}
@@ -136,21 +144,21 @@ export default function Invitations() {
                 : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
             }`}
           >
-            Katıldıklarım
+            {t('invitations.joined')}
           </button>
         </div>
 
         {displayed.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-800 bg-neutral-900/60 p-12 text-center">
+          <div className="rounded-2xl border border-dashed border-neutral-800 bg-neutral-900/60 p-8 text-center sm:p-12">
             <Inbox className="w-10 h-10 text-neutral-500 mx-auto mb-4" />
-            <p className="text-neutral-400">Henüz bekleyen davetiniz yok.</p>
+            <p className="text-neutral-400">{t('invitations.empty')}</p>
           </div>
         ) : (
           <div className="space-y-3">
             {displayed.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4"
+                className="flex flex-col gap-4 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <p className="font-semibold text-white truncate">{item.event.title}</p>
@@ -168,7 +176,7 @@ export default function Invitations() {
                   </div>
                 </div>
 
-                <div className="shrink-0 flex items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
                   {section === 'pending' && item.status === 'invited' ? (
                     <>
                       <button
@@ -177,7 +185,7 @@ export default function Invitations() {
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border border-neutral-700 transition-colors disabled:opacity-60"
                       >
                         <X className="w-3.5 h-3.5" />
-                        Reddet
+                        {t('invitations.reject')}
                       </button>
                       <button
                         onClick={() => handleAccept(item.id)}
@@ -189,7 +197,7 @@ export default function Invitations() {
                         ) : (
                           <Check className="w-3.5 h-3.5" />
                         )}
-                        Kabul et
+                        {t('invitations.accept')}
                       </button>
                     </>
                   ) : (
@@ -200,7 +208,9 @@ export default function Invitations() {
                           : 'bg-red-500/10 text-red-400 border border-red-500/20'
                       }`}
                     >
-                      {item.status === 'accepted' ? 'Kabul edildi' : 'Reddedildi'}
+                      {item.status === 'accepted'
+                        ? t('invitations.accepted')
+                        : t('invitations.rejected')}
                     </span>
                   )}
                 </div>

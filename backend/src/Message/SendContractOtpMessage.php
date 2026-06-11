@@ -8,6 +8,7 @@ final class SendContractOtpMessage
         public readonly string $email,
         public readonly string $contractTitle,
         public readonly string $code,
+        public readonly string $locale = 'tr',
     ) {
     }
 }

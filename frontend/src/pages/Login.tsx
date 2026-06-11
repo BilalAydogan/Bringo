@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, ArrowRight, Activity, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { jwtDecode } from 'jwt-decode';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import { getApiErrorMessage } from '../utils/api';
+
+type TokenPayload = {
+  roles?: string[];
+};
 
 export default function Login() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -12,8 +20,11 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+  const { t } = useTranslation();
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const isAdminEntry = location.pathname.startsWith('/admin');
 
   useEffect(() => {
     if (step === 2 && otpRefs.current[0]) {
@@ -35,8 +46,8 @@ export default function Login() {
       if (response.data.requires_2fa) {
         setStep(2);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Giriş yapılırken bir hata oluştu.');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, t('auth.loginError')));
     } finally {
       setLoading(false);
     }
@@ -79,7 +90,7 @@ export default function Login() {
 
     const code = otpDigits.join('');
     if (code.length !== 6) {
-      setError('Lütfen 6 haneli kodu eksiksiz girin.');
+      setError(t('auth.invalidOtp'));
       setLoading(false);
       return;
     }
@@ -91,9 +102,11 @@ export default function Login() {
       });
 
       login(response.data.token, response.data.refresh_token);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Doğrulama kodu geçersiz veya süresi dolmuş.');
+      const decoded = jwtDecode<TokenPayload>(response.data.token);
+      const hasAdminRole = decoded.roles?.includes('ROLE_ADMIN');
+      navigate(isAdminEntry && hasAdminRole ? '/admin' : '/');
+    } catch (error: unknown) {
+      setError(getApiErrorMessage(error, t('auth.otpExpired')));
       setOtpDigits(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
     } finally {
@@ -112,8 +125,8 @@ export default function Login() {
       setError('');
       setOtpDigits(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
-    } catch (err: any) {
-      setError('Kod tekrar gönderilemedi.');
+    } catch {
+      setError(t('auth.resendFailed'));
     } finally {
       setLoading(false);
     }
@@ -121,11 +134,17 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-3xl p-8 shadow-[0_0_50px_-12px_rgba(168,85,247,0.15)] relative overflow-hidden">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-900 p-5 shadow-[0_0_50px_-12px_rgba(168,85,247,0.15)] sm:p-8">
+        <div className="absolute right-4 top-4 z-20">
+          <LanguageSwitcher />
+        </div>
         {/* Decorative elements */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        
+        <div
+          className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"
+          style={{ animationDelay: '2s' }}
+        ></div>
+
         <div className="relative z-10">
           {/* Step 1: Email & Password */}
           {step === 1 && (
@@ -135,9 +154,13 @@ export default function Login() {
                   <Activity className="w-8 h-8 text-purple-400" />
                 </div>
               </div>
-              
-              <h2 className="text-3xl font-bold text-center text-white mb-2 tracking-tight">Tekrar Hoş Geldiniz</h2>
-              <p className="text-center text-neutral-400 mb-8">Devam etmek için hesabınıza giriş yapın</p>
+
+              <h2 className="mb-2 text-2xl font-bold tracking-tight text-center text-white sm:text-3xl">
+                {isAdminEntry ? t('auth.loginAdminTitle') : t('auth.loginTitle')}
+              </h2>
+              <p className="text-center text-neutral-400 mb-8">
+                {isAdminEntry ? t('auth.loginAdminSubtitle') : t('auth.loginSubtitle')}
+              </p>
 
               {error && (
                 <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium">
@@ -156,7 +179,7 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="block w-full pl-12 pr-4 py-3.5 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-100 placeholder-neutral-500 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all outline-none"
-                      placeholder="E-posta adresiniz"
+                      placeholder={t('auth.emailPlaceholder')}
                       required
                     />
                   </div>
@@ -172,7 +195,7 @@ export default function Login() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="block w-full pl-12 pr-4 py-3.5 bg-neutral-950 border border-neutral-800 rounded-xl text-neutral-100 placeholder-neutral-500 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all outline-none"
-                      placeholder="Parolanız"
+                      placeholder={t('auth.passwordPlaceholder')}
                       required
                     />
                   </div>
@@ -183,9 +206,11 @@ export default function Login() {
                   disabled={loading}
                   className="group relative w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-950 focus:ring-purple-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-70"
                 >
-                  {loading ? 'Giriş Yapılıyor...' : (
+                  {loading ? (
+                    t('auth.loggingIn')
+                  ) : (
                     <>
-                      Devam Et
+                      {t('auth.continue')}
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -193,9 +218,12 @@ export default function Login() {
               </form>
 
               <p className="mt-8 text-center text-sm text-neutral-400">
-                Hesabınız yok mu?{' '}
-                <Link to="/register" className="font-medium text-purple-400 hover:text-purple-300 transition-colors">
-                  Hemen Kayıt Olun
+                {t('auth.noAccount')}{' '}
+                <Link
+                  to="/register"
+                  className="font-medium text-purple-400 hover:text-purple-300 transition-colors"
+                >
+                  {t('auth.registerNow')}
                 </Link>
               </p>
             </>
@@ -210,10 +238,10 @@ export default function Login() {
                 </div>
               </div>
 
-              <h2 className="text-3xl font-bold text-center text-white mb-2 tracking-tight">Doğrulama Kodu</h2>
-              <p className="text-center text-neutral-400 mb-2">
-                E-posta adresinize 6 haneli bir kod gönderdik
-              </p>
+              <h2 className="text-3xl font-bold text-center text-white mb-2 tracking-tight">
+                {t('auth.otpTitle')}
+              </h2>
+              <p className="text-center text-neutral-400 mb-2">{t('auth.otpSubtitle')}</p>
               <p className="text-center text-purple-400 text-sm font-medium mb-8">{email}</p>
 
               {error && (
@@ -223,18 +251,23 @@ export default function Login() {
               )}
 
               <form onSubmit={handleVerify2fa} className="space-y-6">
-                <div className="flex justify-center gap-3" onPaste={handleOtpPaste}>
+                <div
+                  className="mx-auto grid w-full max-w-[22rem] grid-cols-6 gap-2 sm:gap-3"
+                  onPaste={handleOtpPaste}
+                >
                   {otpDigits.map((digit, index) => (
                     <input
                       key={index}
-                      ref={(el) => { otpRefs.current[index] = el; }}
+                      ref={(el) => {
+                        otpRefs.current[index] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      className="w-12 h-14 text-center text-xl font-bold bg-neutral-950 border border-neutral-800 rounded-xl text-white focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all outline-none"
+                      className="h-14 w-full min-w-0 rounded-xl border border-neutral-800 bg-neutral-950 text-center text-xl font-bold text-white outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/50"
                     />
                   ))}
                 </div>
@@ -244,10 +277,12 @@ export default function Login() {
                   disabled={loading || otpDigits.join('').length !== 6}
                   className="group relative w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-950 focus:ring-emerald-500 transition-all shadow-lg shadow-emerald-500/25 disabled:opacity-70"
                 >
-                  {loading ? 'Doğrulanıyor...' : (
+                  {loading ? (
+                    t('auth.otpLoading')
+                  ) : (
                     <>
                       <ShieldCheck className="w-4 h-4" />
-                      Doğrula ve Giriş Yap
+                      {t('auth.verifyAndSignIn')}
                     </>
                   )}
                 </button>
@@ -259,14 +294,18 @@ export default function Login() {
                   disabled={loading}
                   className="text-sm text-neutral-400 hover:text-purple-400 transition-colors disabled:opacity-50"
                 >
-                  Kodu tekrar gönder
+                  {t('auth.resendCode')}
                 </button>
                 <button
-                  onClick={() => { setStep(1); setError(''); setOtpDigits(['', '', '', '', '', '']); }}
+                  onClick={() => {
+                    setStep(1);
+                    setError('');
+                    setOtpDigits(['', '', '', '', '', '']);
+                  }}
                   className="flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-300 transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  Geri dön
+                  {t('auth.back')}
                 </button>
               </div>
             </>

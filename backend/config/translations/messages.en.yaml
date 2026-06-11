@@ -1,0 +1,86 @@
+app:
+  locale:
+    current: 'Current language'
+    updated: 'Language updated.'
+
+auth:
+  verify_email:
+    success: 'Your email address has been verified successfully!'
+    missing_token: 'Verification token is missing.'
+    invalid_token: 'Invalid or expired verification token.'
+
+email:
+  brand:
+    tagline: 'Event planning notifications'
+    security: 'Bringo Security'
+    footer: 'This email is an automated notification about your Bringo account.'
+  greeting_generic: 'Hello,'
+  greeting: 'Hello %name%,'
+  verification:
+    subject: 'Bringo email verification'
+    title: 'Verify your email address'
+    intro: 'You need to verify your email address before you can start using your Bringo account.'
+    body_1: 'You can verify your account by clicking the button below.'
+    body_2: 'If you did not initiate this, you can ignore this email.'
+    text_body_1: 'You can verify your account by opening the link below.'
+    text_body_2: 'If you did not initiate this, you can ignore this email.'
+    preheader: 'Your Bringo email verification link is ready.'
+    cta: 'Verify my email'
+    footer_note: 'For your security, do not share the verification link with anyone.'
+  login:
+    subject: 'Your Bringo sign-in code'
+    title: 'Your sign-in code'
+    intro: 'Use the code below to complete your Bringo sign-in.'
+    body_1: 'The code is valid for 10 minutes.'
+    body_2: 'If you did not try to sign in, we recommend changing your password.'
+    preheader: 'Your Bringo sign-in code: %code%'
+    code_label: 'Sign-in code'
+    detail_validity_label: 'Validity'
+    detail_validity_value: '10 minutes'
+    detail_action_label: 'Action'
+    detail_action_value: 'Account sign-in'
+    footer_note: 'The Bringo team will never ask you for this code.'
+  contract:
+    subject: 'Your Bringo contract approval code'
+    title: 'Contract approval code'
+    intro: 'Use the code below to approve the %contract% agreement.'
+    body_1: 'The code is valid for 10 minutes.'
+    body_2: 'If you did not initiate this approval, you can ignore this email.'
+    preheader: 'Your Bringo contract approval code: %code%'
+    code_label: 'Approval code'
+    detail_contract_label: 'Contract'
+    detail_validity_label: 'Validity'
+    detail_validity_value: '10 minutes'
+    footer_note: 'If the code expires, you can request a new one from inside Bringo.'
+
+contract:
+  request_otp_sent: 'The verification code has been sent to your email address.'
+  approved: 'The contract has been approved successfully.'
+
+profile:
+  invalid_json: 'Invalid JSON data.'
+  missing_fields: 'Current password and new password are required.'
+  password_too_short: 'New password must be at least 6 characters.'
+  invalid_current_password: 'Current password is incorrect.'
+  password_updated: 'Password updated successfully.'
+
+admin:
+  contract_created: 'Contract created.'
+  contract_updated: 'Contract updated.'
+  contract_activated: 'Contract activated.'
+  admin_user_created: 'New admin created.'
+  admin_user_missing_fields: 'First name, last name, email, and password are required.'
+  admin_user_invalid_email: 'Enter a valid email address.'
+  admin_user_password_short: 'Password must be at least 6 characters.'
+  admin_user_exists: 'This email address is already in use.'
+  invalid_json: 'Invalid JSON data.'
+  update_requires_fields: 'At least one field must be provided for update.'
+  invalid_contract_id: 'Invalid contract ID.'
+  contract_not_found: 'Contract not found.'
+  validation:
+    title_required: 'Contract title cannot be blank.'
+    title_too_long: 'Title can be at most {{ limit }} characters.'
+    content_required: 'Contract content cannot be blank.'
+    version_required: 'Version cannot be blank.'
+    version_positive: 'Version must be a positive number.'
+    required_required: 'Required status must be specified.'

@@ -16,6 +16,9 @@ class ItemRepository extends ServiceEntityRepository
         parent::__construct($registry, Item::class);
     }
 
+    /**
+     * @return list<Item>
+     */
     public function findByEvent(string $eventId): array
     {
         return $this->createQueryBuilder('i')

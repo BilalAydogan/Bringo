@@ -7,12 +7,12 @@ use App\Dto\UpdateItemDto;
 use App\Entity\Event;
 use App\Entity\Item;
 use App\Entity\User;
+use App\Exception\ApiException;
 use App\Http\ApiResponse;
 use App\Repository\EventParticipantRepository;
 use App\Repository\EventRepository;
 use App\Repository\ItemRepository;
 use App\Service\ItemService;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/events/{eventId}/items')]
-class ItemController extends AbstractController
+class ItemController extends ApiController
 {
     public function __construct(
         private ItemRepository $itemRepository,
@@ -62,24 +62,10 @@ class ItemController extends AbstractController
             return $event;
         }
 
-        try {
-            $dto = $serializer->deserialize($request->getContent(), CreateItemDto::class, 'json');
-        } catch (\Exception) {
-            return ApiResponse::error('INVALID_JSON', 'Geçersiz JSON verisi.', Response::HTTP_BAD_REQUEST);
-        }
+        $dto = $this->deserializeJson($request, CreateItemDto::class, $serializer);
+        $this->validateDto($dto, $validator);
 
-        $errors = $validator->validate($dto);
-        if (count($errors) > 0) {
-            $messages = array_map(fn ($e) => $e->getMessage(), iterator_to_array($errors));
-
-            return ApiResponse::error('VALIDATION_FAILED', implode(', ', $messages), Response::HTTP_BAD_REQUEST);
-        }
-
-        try {
-            $item = $this->itemService->createItem($dto, $eventId);
-        } catch (\InvalidArgumentException $e) {
-            return ApiResponse::error('INVALID_EVENT', $e->getMessage(), Response::HTTP_NOT_FOUND);
-        }
+        $item = $this->itemService->createItem($dto, $eventId);
 
         return ApiResponse::success(
             $this->itemService->serialize($item),
@@ -124,28 +110,14 @@ class ItemController extends AbstractController
             return ApiResponse::error('ITEM_NOT_FOUND', 'Malzeme bulunamadı.', Response::HTTP_NOT_FOUND);
         }
 
-        try {
-            $dto = $serializer->deserialize($request->getContent(), UpdateItemDto::class, 'json');
-        } catch (\Exception) {
-            return ApiResponse::error('INVALID_JSON', 'Geçersiz JSON verisi.', Response::HTTP_BAD_REQUEST);
-        }
-
-        $errors = $validator->validate($dto);
-        if (count($errors) > 0) {
-            $messages = array_map(fn ($e) => $e->getMessage(), iterator_to_array($errors));
-
-            return ApiResponse::error('VALIDATION_FAILED', implode(', ', $messages), Response::HTTP_BAD_REQUEST);
-        }
+        $dto = $this->deserializeJson($request, UpdateItemDto::class, $serializer);
+        $this->validateDto($dto, $validator);
 
         if ($dto->name === null && $dto->target_quantity === null && $dto->status === null) {
             return ApiResponse::error('VALIDATION_FAILED', 'Güncellenecek en az bir alan gönderilmelidir.', Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $item = $this->itemService->updateItem($item, $dto);
-        } catch (\RuntimeException $e) {
-            return ApiResponse::error('VALIDATION_FAILED', $e->getMessage(), Response::HTTP_BAD_REQUEST);
-        }
+        $item = $this->itemService->updateItem($item, $dto);
 
         return ApiResponse::success($this->itemService->serialize($item), 'Malzeme güncellendi.');
     }
@@ -183,10 +155,7 @@ class ItemController extends AbstractController
             return ApiResponse::error('ITEM_NOT_FOUND', 'Malzeme bulunamadı.', Response::HTTP_NOT_FOUND);
         }
 
-        $data = json_decode($request->getContent() ?: '{}', true);
-        if (!is_array($data) || json_last_error() !== JSON_ERROR_NONE) {
-            return ApiResponse::error('INVALID_JSON', 'Geçersiz JSON verisi.', Response::HTTP_BAD_REQUEST);
-        }
+        $data = $this->decodeJsonObject($request);
 
         $assignments = $data['assignments'] ?? [];
 
@@ -194,11 +163,7 @@ class ItemController extends AbstractController
             return ApiResponse::error('VALIDATION_FAILED', 'assignments dizisi gerekli.', Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $item = $this->itemService->reassignItem($item, $assignments);
-        } catch (\RuntimeException $e) {
-            return ApiResponse::error('VALIDATION_FAILED', $e->getMessage(), Response::HTTP_BAD_REQUEST);
-        }
+        $item = $this->itemService->reassignItem($item, $assignments);
 
         return ApiResponse::success($this->itemService->serialize($item), 'Atamalar güncellendi.');
     }

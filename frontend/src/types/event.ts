@@ -19,6 +19,8 @@ export interface Event {
   created_by: {
     id: string;
     email: string;
+    firstName?: string;
+    lastName?: string;
   };
   created_at: string;
   is_owner: boolean;

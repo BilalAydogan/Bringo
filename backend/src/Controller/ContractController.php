@@ -5,18 +5,19 @@ namespace App\Controller;
 use App\Dto\RequestContractOtpDto;
 use App\Dto\VerifyContractOtpDto;
 use App\Entity\User;
+use App\Exception\ApiException;
 use App\Http\ApiResponse;
 use App\Service\ContractService;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/api')]
-class ContractController extends AbstractController
+class ContractController extends ApiController
 {
     #[Route('/contracts/active', name: 'api_contracts_active', methods: ['GET'])]
     public function getActiveContract(ContractService $contractService): JsonResponse
@@ -49,33 +50,27 @@ class ContractController extends AbstractController
         SerializerInterface $serializer,
         ValidatorInterface $validator,
         ContractService $contractService,
+        TranslatorInterface $translator,
     ): JsonResponse {
-        try {
-            $dto = $serializer->deserialize($request->getContent(), RequestContractOtpDto::class, 'json');
-        } catch (\Exception) {
-            return ApiResponse::error('INVALID_JSON', 'Geçersiz JSON verisi.', Response::HTTP_BAD_REQUEST);
-        }
-
-        $errors = $validator->validate($dto);
-        if (count($errors) > 0) {
-            $messages = array_map(fn ($e) => $e->getMessage(), iterator_to_array($errors));
-
-            return ApiResponse::error('VALIDATION_FAILED', implode(', ', $messages), Response::HTTP_BAD_REQUEST);
-        }
+        $dto = $this->deserializeJson($request, RequestContractOtpDto::class, $serializer);
+        $this->validateDto($dto, $validator);
 
         /** @var User $user */
         $user = $this->getUser();
 
         try {
             $contract = $contractService->findActiveContractOrFail($dto->contractId);
-            $contractService->requestOtp($user, $contract);
+            $contractService->requestOtp($user, $contract, $request->getLocale());
         } catch (\RuntimeException $e) {
-            return ApiResponse::error('RESEND_COOLDOWN', $e->getMessage(), Response::HTTP_TOO_MANY_REQUESTS);
+            throw new ApiException('RESEND_COOLDOWN', $e->getMessage(), Response::HTTP_TOO_MANY_REQUESTS, previous: $e);
         } catch (\InvalidArgumentException $e) {
-            return ApiResponse::error('INVALID_CONTRACT', $e->getMessage(), Response::HTTP_BAD_REQUEST);
+            throw new ApiException('INVALID_CONTRACT', $e->getMessage(), Response::HTTP_BAD_REQUEST, previous: $e);
         }
 
-        return ApiResponse::success(null, 'Doğrulama kodu e-posta adresinize gönderildi.');
+        return ApiResponse::success(
+            null,
+            $translator->trans('contract.request_otp_sent', [], 'messages', $request->getLocale()),
+        );
     }
 
     #[Route('/contracts/verify-otp', name: 'api_contracts_verify_otp', methods: ['POST'])]
@@ -84,19 +79,10 @@ class ContractController extends AbstractController
         SerializerInterface $serializer,
         ValidatorInterface $validator,
         ContractService $contractService,
+        TranslatorInterface $translator,
     ): JsonResponse {
-        try {
-            $dto = $serializer->deserialize($request->getContent(), VerifyContractOtpDto::class, 'json');
-        } catch (\Exception) {
-            return ApiResponse::error('INVALID_JSON', 'Geçersiz JSON verisi.', Response::HTTP_BAD_REQUEST);
-        }
-
-        $errors = $validator->validate($dto);
-        if (count($errors) > 0) {
-            $messages = array_map(fn ($e) => $e->getMessage(), iterator_to_array($errors));
-
-            return ApiResponse::error('VALIDATION_FAILED', implode(', ', $messages), Response::HTTP_BAD_REQUEST);
-        }
+        $dto = $this->deserializeJson($request, VerifyContractOtpDto::class, $serializer);
+        $this->validateDto($dto, $validator);
 
         /** @var User $user */
         $user = $this->getUser();
@@ -105,14 +91,17 @@ class ContractController extends AbstractController
             $contract = $contractService->findActiveContractOrFail($dto->contractId);
             $contractService->acceptWithOtp($user, $contract, $dto->code, $request->getClientIp());
         } catch (\InvalidArgumentException $e) {
-            return ApiResponse::error('OTP_VERIFICATION_FAILED', $e->getMessage(), Response::HTTP_BAD_REQUEST);
+            throw new ApiException('OTP_VERIFICATION_FAILED', $e->getMessage(), Response::HTTP_BAD_REQUEST, previous: $e);
         }
 
         $pending = $contractService->getPendingContract($user);
 
-        return ApiResponse::success([
-            'has_pending' => $pending !== null,
-            'approval' => $contractService->buildApprovalPayload($pending),
-        ], 'Sözleşme başarıyla onaylandı.');
+        return ApiResponse::success(
+            [
+                'has_pending' => $pending !== null,
+                'approval' => $contractService->buildApprovalPayload($pending, $request->getLocale()),
+            ],
+            $translator->trans('contract.approved', [], 'messages', $request->getLocale()),
+        );
     }
 }

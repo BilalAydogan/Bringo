@@ -1,0 +1,4 @@
+app:
+  locale:
+    current: "Geçerli dil"
+    updated: "Dil güncellendi."

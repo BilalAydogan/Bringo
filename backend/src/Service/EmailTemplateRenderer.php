@@ -20,6 +20,10 @@ final class EmailTemplateRenderer
         ?string $codeLabel = null,
         array $details = [],
         ?string $footerNote = null,
+        string $documentLocale = 'tr',
+        string $brandTagline = 'Etkinlik planlama bildirimleri',
+        string $securityBanner = 'Bringo Güvenlik',
+        string $footerDisclaimer = 'Bu e-posta Bringo hesabınızla ilgili otomatik bir bildirimdir.',
     ): string {
         $preheaderHtml = $this->escape($preheader ?? $intro);
         $greetingHtml = $greeting !== null
@@ -87,7 +91,7 @@ final class EmailTemplateRenderer
 
         return sprintf(
             '<!doctype html>
-            <html lang="tr">
+            <html lang="%s">
             <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -102,12 +106,12 @@ final class EmailTemplateRenderer
                                 <tr>
                                     <td style="padding:0 0 18px;">
                                         <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:0;">Bringo</div>
-                                        <div style="margin-top:4px;font-size:13px;color:#737373;">Etkinlik planlama bildirimleri</div>
+                                        <div style="margin-top:4px;font-size:13px;color:#737373;">%s</div>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td style="border:1px solid #262626;background:#171717;border-radius:20px;padding:34px 32px;box-shadow:0 18px 50px rgba(0,0,0,.28);">
-                                        <div style="display:inline-block;margin-bottom:16px;padding:7px 10px;border-radius:999px;background:#1d4ed8;color:#dbeafe;font-size:12px;font-weight:700;">Bringo Güvenlik</div>
+                                        <div style="display:inline-block;margin-bottom:16px;padding:7px 10px;border-radius:999px;background:#1d4ed8;color:#dbeafe;font-size:12px;font-weight:700;">%s</div>
                                         <h1 style="margin:0 0 12px;font-size:28px;line-height:34px;color:#ffffff;font-weight:800;">%s</h1>
                                         %s
                                         <p style="margin:0 0 18px;font-size:16px;line-height:26px;color:#d4d4d4;">%s</p>
@@ -120,7 +124,7 @@ final class EmailTemplateRenderer
                                 </tr>
                                 <tr>
                                     <td style="padding:18px 4px 0;text-align:center;color:#525252;font-size:12px;line-height:18px;">
-                                        Bu e-posta Bringo hesabınızla ilgili otomatik bir bildirimdir.
+                                        %s
                                     </td>
                                 </tr>
                             </table>
@@ -129,6 +133,7 @@ final class EmailTemplateRenderer
                 </table>
             </body>
             </html>',
+            $this->escapeAttribute($documentLocale),
             $this->escape($title),
             $preheaderHtml,
             $this->escape($title),
@@ -139,6 +144,9 @@ final class EmailTemplateRenderer
             $ctaHtml,
             $detailsHtml,
             $footerNoteHtml,
+            $this->escape($brandTagline),
+            $this->escape($securityBanner),
+            $this->escape($footerDisclaimer),
         );
     }
 
@@ -157,8 +165,10 @@ final class EmailTemplateRenderer
         ?string $codeLabel = null,
         array $details = [],
         ?string $footerNote = null,
+        string $brandTagline = 'Etkinlik planlama bildirimleri',
+        string $footerDisclaimer = 'Bu e-posta Bringo hesabınızla ilgili otomatik bir bildirimdir.',
     ): string {
-        $lines = ['Bringo', '', $title, ''];
+        $lines = ['Bringo', $brandTagline, '', $title, ''];
 
         if ($greeting !== null) {
             $lines[] = $greeting;
@@ -192,7 +202,7 @@ final class EmailTemplateRenderer
         }
 
         $lines[] = '';
-        $lines[] = 'Bu e-posta Bringo hesabınızla ilgili otomatik bir bildirimdir.';
+        $lines[] = $footerDisclaimer;
 
         return implode("\n", $lines);
     }

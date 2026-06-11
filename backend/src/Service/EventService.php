@@ -7,11 +7,13 @@ use App\Dto\UpdateEventDto;
 use App\Entity\Event;
 use App\Entity\EventParticipant;
 use App\Entity\Item;
+use App\Entity\ItemAssignment;
 use App\Entity\User;
 use App\Repository\EventParticipantRepository;
 use App\Repository\EventRepository;
 use App\Repository\ItemRepository;
 use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 class EventService
@@ -20,6 +22,7 @@ class EventService
         private EventRepository $eventRepository,
         private EventParticipantRepository $participantRepository,
         private ItemRepository $itemRepository,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -73,7 +76,7 @@ class EventService
         if ($existing) {
             if ($status) {
                 $existing->setStatus($status);
-                $this->eventRepository->getEntityManager()->flush();
+                $this->entityManager->flush();
             }
 
             return $existing;
@@ -84,8 +87,8 @@ class EventService
         $participant->setUser($user);
         $participant->setStatus($status ?? EventParticipant::STATUS_ACCEPTED);
 
-        $this->eventRepository->getEntityManager()->persist($participant);
-        $this->eventRepository->getEntityManager()->flush();
+        $this->entityManager->persist($participant);
+        $this->entityManager->flush();
 
         return $participant;
     }
@@ -93,12 +96,12 @@ class EventService
     public function updateParticipantStatus(EventParticipant $participant, string $status): void
     {
         $participant->setStatus($status);
-        $this->eventRepository->getEntityManager()->flush();
+        $this->entityManager->flush();
     }
 
     public function removeParticipant(EventParticipant $participant): int
     {
-        $em = $this->eventRepository->getEntityManager();
+        $em = $this->entityManager;
         $event = $participant->getEvent();
         $user = $participant->getUser();
 
@@ -115,6 +118,9 @@ class EventService
         });
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function serialize(Event $event, User $currentUser): array
     {
         $createdBy = $event->getCreatedBy();
@@ -124,20 +130,23 @@ class EventService
             'id' => $event->getId()->toRfc4122(),
             'title' => $event->getTitle(),
             'description' => $event->getDescription(),
-            'date' => $event->getDate()?->format(\DateTimeInterface::ATOM),
+            'date' => $this->formatUtc($event->getDate()),
             'location' => $event->getLocation(),
             'invite_code' => $event->getInviteCode(),
             'created_by' => [
                 'id' => $createdBy?->getId()->toRfc4122(),
                 'email' => $createdBy?->getEmail(),
             ],
-            'created_at' => $event->getCreatedAt()?->format(\DateTimeInterface::ATOM),
+            'created_at' => $this->formatUtc($event->getCreatedAt()),
             'is_owner' => $createdBy?->getId()->equals($currentUser->getId()) ?? false,
             'is_participant' => $currentUserIsParticipant,
             'participants' => $this->getParticipants($event),
         ];
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     private function getParticipants(Event $event): array
     {
         $qb = $this->participantRepository->createQueryBuilder('ep')
@@ -164,7 +173,7 @@ class EventService
 
     private function removeUserAssignmentsFromEvent(Event $event, User $user): int
     {
-        $em = $this->eventRepository->getEntityManager();
+        $em = $this->entityManager;
         $removedAssignments = 0;
 
         foreach ($this->itemRepository->findByEvent($event->getId()->toRfc4122()) as $item) {
@@ -175,6 +184,10 @@ class EventService
             $em->lock($item, LockMode::PESSIMISTIC_WRITE);
 
             foreach ($item->getAssignments()->toArray() as $assignment) {
+                if (!$assignment instanceof ItemAssignment) {
+                    continue;
+                }
+
                 if ($assignment->getUser()?->getId()->equals($user->getId())) {
                     $item->removeAssignment($assignment);
                     $em->remove($assignment);
@@ -198,7 +211,6 @@ class EventService
     {
         $code = strtoupper(Uuid::v4()->toBase58());
 
-        $unique = true;
         while ($this->eventRepository->findOneBy(['inviteCode' => $code])) {
             $code = strtoupper(Uuid::v4()->toBase58());
         }
@@ -209,9 +221,20 @@ class EventService
     private function parseDate(string $value): \DateTimeImmutable
     {
         try {
-            return new \DateTimeImmutable($value);
+            return (new \DateTimeImmutable($value))->setTimezone(new \DateTimeZone('UTC'));
         } catch (\Exception) {
             throw new \InvalidArgumentException('Geçersiz tarih formatı.');
         }
+    }
+
+    private function formatUtc(?\DateTimeInterface $date): ?string
+    {
+        if ($date === null) {
+            return null;
+        }
+
+        return \DateTimeImmutable::createFromInterface($date)
+            ->setTimezone(new \DateTimeZone('UTC'))
+            ->format(\DateTimeInterface::ATOM);
     }
 }

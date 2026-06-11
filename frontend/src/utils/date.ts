@@ -1,3 +1,7 @@
+function getBrowserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+}
+
 export function toDatetimeLocalValue(isoDate: string): string {
   const date = new Date(isoDate);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -6,14 +10,29 @@ export function toDatetimeLocalValue(isoDate: string): string {
 }
 
 export function formatEventDate(isoDate: string): string {
-  return new Date(isoDate).toLocaleString('tr-TR', {
+  if (!isoDate) return '-';
+
+  const locale = document.documentElement.lang || 'tr';
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'long',
     timeStyle: 'short',
-  });
+    timeZone: getBrowserTimeZone(),
+  }).format(date);
+}
+
+export function formatDateTime(isoDate: string): string {
+  return formatEventDate(isoDate);
 }
 
 export function datetimeLocalToIso(value: string): string {
-  return new Date(value).toISOString();
+  const [datePart, timePart] = value.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+
+  return new Date(year, month - 1, day, hours, minutes).toISOString();
 }
 
 export function isEventPast(isoDate: string): boolean {

@@ -1,0 +1,86 @@
+app:
+  locale:
+    current: 'Geçerli dil'
+    updated: 'Dil güncellendi.'
+
+auth:
+  verify_email:
+    success: 'E-posta adresiniz başarıyla doğrulandı!'
+    missing_token: 'Doğrulama belirteci eksik.'
+    invalid_token: 'Geçersiz veya süresi dolmuş doğrulama belirteci.'
+
+email:
+  brand:
+    tagline: 'Etkinlik planlama bildirimleri'
+    security: 'Bringo Güvenlik'
+    footer: 'Bu e-posta Bringo hesabınızla ilgili otomatik bir bildirimdir.'
+  greeting_generic: 'Merhaba,'
+  greeting: 'Merhaba %name%,'
+  verification:
+    subject: 'Bringo e-posta doğrulama'
+    title: 'E-posta adresinizi doğrulayın'
+    intro: 'Bringo hesabınızı kullanmaya başlamak için e-posta adresinizi doğrulamanız gerekiyor.'
+    body_1: 'Aşağıdaki butona tıklayarak hesabınızı doğrulayabilirsiniz.'
+    body_2: 'Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.'
+    text_body_1: 'Aşağıdaki bağlantıyı açarak hesabınızı doğrulayabilirsiniz.'
+    text_body_2: 'Bu işlemi siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.'
+    preheader: 'Bringo hesabınız için e-posta doğrulama bağlantınız hazır.'
+    cta: 'E-postamı doğrula'
+    footer_note: 'Güvenliğiniz için doğrulama bağlantısını kimseyle paylaşmayın.'
+  login:
+    subject: 'Bringo giriş doğrulama kodunuz'
+    title: 'Giriş doğrulama kodunuz'
+    intro: 'Bringo hesabınıza giriş işlemini tamamlamak için aşağıdaki kodu kullanın.'
+    body_1: 'Kod 10 dakika boyunca geçerlidir.'
+    body_2: 'Bu giriş denemesini siz yapmadıysanız parolanızı değiştirmenizi öneririz.'
+    preheader: 'Bringo giriş kodunuz: %code%'
+    code_label: 'Giriş kodu'
+    detail_validity_label: 'Geçerlilik'
+    detail_validity_value: '10 dakika'
+    detail_action_label: 'İşlem'
+    detail_action_value: 'Hesap girişi'
+    footer_note: 'Bringo ekibi bu kodu sizden hiçbir zaman istemez.'
+  contract:
+    subject: 'Bringo sözleşme onay kodunuz'
+    title: 'Sözleşme onay kodunuz'
+    intro: '%contract% sözleşmesini onaylamak için aşağıdaki kodu kullanın.'
+    body_1: 'Bu kod 10 dakika boyunca geçerlidir.'
+    body_2: 'Onay işlemini siz başlatmadıysanız bu e-postayı yok sayabilirsiniz.'
+    preheader: 'Bringo sözleşme onay kodunuz: %code%'
+    code_label: 'Onay kodu'
+    detail_contract_label: 'Sözleşme'
+    detail_validity_label: 'Geçerlilik'
+    detail_validity_value: '10 dakika'
+    footer_note: 'Kod süresi dolarsa Bringo içinden yeni bir kod isteyebilirsiniz.'
+
+contract:
+  request_otp_sent: 'Doğrulama kodu e-posta adresinize gönderildi.'
+  approved: 'Sözleşme başarıyla onaylandı.'
+
+profile:
+  invalid_json: 'Geçersiz JSON verisi.'
+  missing_fields: 'Mevcut şifre ve yeni şifre gerekli.'
+  password_too_short: 'Yeni şifre en az 6 karakter olmalıdır.'
+  invalid_current_password: 'Mevcut şifre yanlış.'
+  password_updated: 'Şifre başarıyla güncellendi.'
+
+admin:
+  contract_created: 'Sözleşme oluşturuldu.'
+  contract_updated: 'Sözleşme güncellendi.'
+  contract_activated: 'Sözleşme aktif edildi.'
+  admin_user_created: 'Yeni yönetici oluşturuldu.'
+  admin_user_missing_fields: 'Ad, soyad, e-posta ve parola gerekli.'
+  admin_user_invalid_email: 'Geçerli bir e-posta adresi girin.'
+  admin_user_password_short: 'Parola en az 6 karakter olmalıdır.'
+  admin_user_exists: 'Bu e-posta adresi zaten kullanımda.'
+  invalid_json: 'Geçersiz JSON verisi.'
+  update_requires_fields: 'Güncellenecek en az bir alan gönderilmelidir.'
+  invalid_contract_id: 'Geçersiz sözleşme kimliği.'
+  contract_not_found: 'Sözleşme bulunamadı.'
+  validation:
+    title_required: 'Sözleşme başlığı boş olamaz.'
+    title_too_long: 'Başlık en fazla {{ limit }} karakter olabilir.'
+    content_required: 'Sözleşme içeriği boş olamaz.'
+    version_required: 'Sürüm boş olamaz.'
+    version_positive: 'Sürüm pozitif bir sayı olmalıdır.'
+    required_required: 'Zorunluluk durumu belirtilmelidir.'

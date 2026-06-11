@@ -4,6 +4,9 @@ import axiosInstance from '../api/axios';
 import AppLayout from '../components/AppLayout';
 import type { Item } from '../types/item';
 import { ArrowLeft, Plus, Trash2, Check, Loader2, Package, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { Event } from '../types/event';
+import { getApiErrorMessage } from '../utils/api';
 
 type Assignment = {
   id?: string;
@@ -20,8 +23,24 @@ type Assignment = {
 
 export default function EventItems() {
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation();
+
+  const formatPersonName = (person?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  }) => {
+    const fullName = `${person?.firstName ?? ''} ${person?.lastName ?? ''}`.trim();
+    if (fullName) {
+      return fullName;
+    }
+
+    return person?.email?.split('@')[0] ?? '-';
+  };
   const [items, setItems] = useState<Item[]>([]);
-  const [allUsers, setAllUsers] = useState<{ id: string; firstName: string; lastName: string; email: string }[]>([]);
+  const [allUsers, setAllUsers] = useState<
+    { id: string; firstName: string; lastName: string; email: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [newItemName, setNewItemName] = useState('');
@@ -37,31 +56,31 @@ export default function EventItems() {
     axiosInstance
       .get(`/events/${id}/items`)
       .then((response) => setItems(response.data.data ?? []))
-      .catch((err) => setError(err.response?.data?.error?.message || 'Malzemeler yüklenemedi.'))
+      .catch((err) => setError(err.response?.data?.error?.message || t('eventDetail.loadError')))
       .finally(() => setLoading(false));
 
     axiosInstance
       .get('/events/joined')
       .then((response) => {
-        const joined = response.data.data ?? [];
-        const users = joined.flatMap((event: any) => [
+        const joined: Event[] = response.data.data ?? [];
+        const users = joined.flatMap((event) => [
           {
             id: event.created_by.id,
             firstName: event.created_by.firstName ?? event.created_by.email.split('@')[0],
             lastName: event.created_by.lastName ?? '',
             email: event.created_by.email,
           },
-          ...(event.participants ?? []).map((p: any) => ({
-            id: p.user.id,
-            firstName: p.user.firstName,
-            lastName: p.user.lastName,
-            email: p.user.email,
+          ...(event.participants ?? []).map((participant) => ({
+            id: participant.user.id,
+            firstName: participant.user.firstName,
+            lastName: participant.user.lastName,
+            email: participant.user.email,
           })),
         ]);
         setAllUsers(users);
       })
       .catch(() => {});
-  }, [id]);
+  }, [id, t]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,22 +95,22 @@ export default function EventItems() {
       setItems((prev) => [response.data.data, ...prev]);
       setNewItemName('');
       setNewItemQuantity('');
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Malzeme eklenemedi.');
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, t('eventDetail.addItemError')));
     } finally {
       setCreating(false);
     }
   };
 
   const handleDelete = async (itemId: string) => {
-    if (!window.confirm('Bu malzemeyi silmek istediğinize emin misiniz?')) return;
+    if (!window.confirm(t('eventDetail.deleteConfirm'))) return;
 
     setProcessingId(itemId);
     try {
       await axiosInstance.delete(`/events/${id}/items/${itemId}`);
       setItems((prev) => prev.filter((item) => item.id !== itemId));
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Malzeme silinemedi.');
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, t('eventDetail.deleteItemError')));
     } finally {
       setProcessingId(null);
     }
@@ -103,11 +122,9 @@ export default function EventItems() {
     setProcessingId(itemId);
     try {
       const response = await axiosInstance.post(`/events/${id}/items/${itemId}/complete`);
-      setItems((prev) =>
-        prev.map((item) => (item.id === itemId ? response.data.data : item)),
-      );
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Malzeme tamamlanamadı.');
+      setItems((prev) => prev.map((item) => (item.id === itemId ? response.data.data : item)));
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, t('eventDetail.completeItemError')));
     } finally {
       setProcessingId(null);
     }
@@ -120,12 +137,10 @@ export default function EventItems() {
         assignments: assignments.map((a) => ({ user_id: a.user_id, quantity: a.quantity })),
       });
 
-      setItems((prev) =>
-        prev.map((item) => (item.id === itemId ? response.data.data : item)),
-      );
+      setItems((prev) => prev.map((item) => (item.id === itemId ? response.data.data : item)));
       setEditingAssignments(null);
-    } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Atamalar kaydedilemedi.');
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, t('eventDetail.saveAssignmentsError')));
     } finally {
       setProcessingId(null);
     }
@@ -181,13 +196,13 @@ export default function EventItems() {
           className="inline-flex items-center gap-2 text-sm text-neutral-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Etkinlik Detayı
+          {t('eventDetail.backToEvent')}
         </Link>
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-3xl font-bold mb-1">Malzemeler</h2>
-            <p className="text-neutral-400">Etkinliğe getirilecek malzemeleri yönetin</p>
+            <h2 className="text-3xl font-bold mb-1">{t('eventDetail.itemsLabel')}</h2>
+            <p className="text-neutral-400">{t('eventDetail.itemsSubtitle')}</p>
           </div>
         </div>
 
@@ -203,7 +218,7 @@ export default function EventItems() {
               type="text"
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
-              placeholder="Malzeme adı ekle..."
+              placeholder={t('eventDetail.itemNamePlaceholder')}
               className="flex-1 bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500/50 transition-colors"
             />
             <input
@@ -211,7 +226,7 @@ export default function EventItems() {
               min={1}
               value={newItemQuantity}
               onChange={(e) => setNewItemQuantity(e.target.value)}
-              placeholder="Adet"
+              placeholder={t('eventDetail.itemQuantityPlaceholder')}
               className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500/50 transition-colors"
             />
             <button
@@ -224,7 +239,7 @@ export default function EventItems() {
               ) : (
                 <Plus className="w-4 h-4" />
               )}
-              Ekle
+              {t('eventDetail.addItem')}
             </button>
           </div>
         </form>
@@ -236,11 +251,13 @@ export default function EventItems() {
         ) : (
           <div className="space-y-8">
             <div>
-              <h3 className="text-lg font-semibold mb-4">Bekleyen Malzemeler ({pendingItems.length})</h3>
+              <h3 className="text-lg font-semibold mb-4">
+                {t('eventDetail.pendingItems', { count: pendingItems.length })}
+              </h3>
               {pendingItems.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-neutral-800 bg-neutral-900/60 p-8 text-center">
                   <Package className="w-10 h-10 text-neutral-500 mx-auto mb-3" />
-                  <p className="text-neutral-400">Henüz malzeme eklenmedi.</p>
+                  <p className="text-neutral-400">{t('eventDetail.noItems')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -249,22 +266,32 @@ export default function EventItems() {
                     const draft = assignmentDrafts[item.id] ?? [];
 
                     return (
-                      <div key={item.id} className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
+                      <div
+                        key={item.id}
+                        className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4"
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-white">{item.name}</p>
                             {item.target_quantity !== null && (
                               <p className="text-xs text-neutral-400 mt-1">
-                                Hedef: {item.target_quantity} adet | Atanan: {item.total_assigned ?? 0} adet
+                                {t('eventDetail.targetSummary', {
+                                  target: item.target_quantity,
+                                  assigned: item.total_assigned ?? 0,
+                                })}
                               </p>
                             )}
                             {item.assignments && item.assignments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {item.assignments.map((assignment) => (
-                                  <div key={assignment.id} className="flex items-center gap-2 text-xs text-neutral-400">
+                                  <div
+                                    key={assignment.id}
+                                    className="flex items-center gap-2 text-xs text-neutral-400"
+                                  >
                                     <Users className="w-3 h-3" />
                                     <span>
-                                      {assignment.user?.firstName} {assignment.user?.lastName} x{assignment.quantity}
+                                      {assignment.user?.firstName} {assignment.user?.lastName} x
+                                      {assignment.quantity}
                                     </span>
                                     <span
                                       className={`px-2 py-0.5 rounded-md ${
@@ -273,7 +300,9 @@ export default function EventItems() {
                                           : 'bg-neutral-800 text-neutral-300'
                                       }`}
                                     >
-                                      {assignment.status === 'completed' ? 'Tamamlandı' : 'Bekliyor'}
+                                      {assignment.status === 'completed'
+                                        ? t('eventDetail.completed')
+                                        : t('eventDetail.pending')}
                                     </span>
                                   </div>
                                 ))}
@@ -287,13 +316,13 @@ export default function EventItems() {
                                   onClick={() => startEditingAssignments(item)}
                                   className="px-3 py-2 rounded-xl text-xs font-medium bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 transition-colors"
                                 >
-                                  Atama Yap
+                                  {t('eventDetail.assignItem')}
                                 </button>
                                 <button
                                   onClick={() => handleComplete(item.id)}
                                   disabled={processingId === item.id}
                                   className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors disabled:opacity-60"
-                                  title="Tamamla"
+                                  title={t('eventDetail.completeItem')}
                                 >
                                   {processingId === item.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -305,7 +334,7 @@ export default function EventItems() {
                                   onClick={() => handleDelete(item.id)}
                                   disabled={processingId === item.id}
                                   className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors disabled:opacity-60"
-                                  title="Sil"
+                                  title={t('common.delete')}
                                 >
                                   {processingId === item.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -325,7 +354,7 @@ export default function EventItems() {
                                 disabled={processingId === item.id}
                                 className="px-3 py-2 rounded-xl text-xs font-medium bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 transition-colors disabled:opacity-60"
                               >
-                                Kaydet
+                                {t('eventDetail.save')}
                               </button>
                             )}
                           </div>
@@ -337,13 +366,15 @@ export default function EventItems() {
                               <div key={index} className="flex items-center gap-2">
                                 <select
                                   value={assignment.user_id}
-                                  onChange={(e) => updateDraft(item.id, index, { user_id: e.target.value })}
+                                  onChange={(e) =>
+                                    updateDraft(item.id, index, { user_id: e.target.value })
+                                  }
                                   className="flex-1 bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
                                 >
-                                  <option value="">Kişi seçin...</option>
+                                  <option value="">{t('eventDetail.selectPerson')}</option>
                                   {allUsers.map((u) => (
                                     <option key={u.id} value={u.id}>
-                                      {u.firstName} {u.lastName} ({u.email})
+                                      {formatPersonName(u)}
                                     </option>
                                   ))}
                                 </select>
@@ -352,11 +383,14 @@ export default function EventItems() {
                                   min={1}
                                   value={assignment.quantity}
                                   onChange={(e) =>
-                                    updateDraft(item.id, index, { quantity: Math.max(1, parseInt(e.target.value || '1', 10)) })
+                                    updateDraft(item.id, index, {
+                                      quantity: Math.max(1, parseInt(e.target.value || '1', 10)),
+                                    })
                                   }
                                   className="w-20 bg-neutral-800 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white text-center focus:outline-none focus:border-blue-500/50"
                                 />
                                 <button
+                                  type="button"
                                   onClick={() => removeDraftRow(item.id, index)}
                                   className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
                                 >
@@ -365,11 +399,12 @@ export default function EventItems() {
                               </div>
                             ))}
                             <button
+                              type="button"
                               onClick={() => addDraftRow(item.id)}
                               className="inline-flex items-center gap-2 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              Kişi ekle
+                              {t('eventDetail.addPerson')}
                             </button>
                           </div>
                         )}
@@ -382,7 +417,9 @@ export default function EventItems() {
 
             {completedItems.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-4 text-neutral-400">Tamamlananlar ({completedItems.length})</h3>
+                <h3 className="text-lg font-semibold mb-4 text-neutral-400">
+                  {t('eventDetail.completedItems', { count: completedItems.length })}
+                </h3>
                 <div className="space-y-2">
                   {completedItems.map((item) => (
                     <div

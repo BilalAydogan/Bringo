@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\ItemRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -30,8 +32,11 @@ class Item
     #[ORM\Column(length: 50)]
     private ?string $status = self::STATUS_PENDING;
 
+    /**
+     * @var Collection<int, ItemAssignment>
+     */
     #[ORM\OneToMany(mappedBy: 'item', targetEntity: ItemAssignment::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
-    private $assignments;
+    private Collection $assignments;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
@@ -39,7 +44,7 @@ class Item
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->assignments = new \Doctrine\Common\Collections\ArrayCollection();
+        $this->assignments = new ArrayCollection();
     }
 
     public const STATUS_PENDING = 'pending';
@@ -56,7 +61,10 @@ class Item
     public function getStatus(): ?string { return $this->status; }
     public function setStatus(?string $status): static { $this->status = $status; return $this; }
     public function getCreatedAt(): ?\DateTimeImmutable { return $this->createdAt; }
-    public function getAssignments(): \Doctrine\Common\Collections\Collection { return $this->assignments; }
+    /**
+     * @return Collection<int, ItemAssignment>
+     */
+    public function getAssignments(): Collection { return $this->assignments; }
     public function addAssignment(ItemAssignment $assignment): static
     {
         if (!$this->assignments->contains($assignment)) {

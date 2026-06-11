@@ -6,10 +6,11 @@ import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRole?: string;
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated } = useAuth();
+export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
+  const { isAuthenticated, user } = useAuth();
   const [checking, setChecking] = useState(true);
   const [hasPendingContracts, setHasPendingContracts] = useState(false);
 
@@ -32,6 +33,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requiredRole && !(user?.roles ?? []).includes(requiredRole)) {
+    return <Navigate to="/" replace />;
   }
 
   if (checking) {

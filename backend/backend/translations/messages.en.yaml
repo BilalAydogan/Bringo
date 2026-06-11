@@ -1,0 +1,4 @@
+app:
+  locale:
+    current: "Current language"
+    updated: "Language updated."

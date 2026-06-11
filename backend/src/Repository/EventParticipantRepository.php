@@ -18,6 +18,9 @@ class EventParticipantRepository extends ServiceEntityRepository
         parent::__construct($registry, EventParticipant::class);
     }
 
+    /**
+     * @return list<EventParticipant>
+     */
     public function findInvitedByUser(User $user): array
     {
         return $this->createQueryBuilder('ep')
@@ -31,6 +34,9 @@ class EventParticipantRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /**
+     * @return list<EventParticipant>
+     */
     public function findAcceptedByUser(User $user): array
     {
         return $this->createQueryBuilder('ep')

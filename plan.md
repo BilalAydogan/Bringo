@@ -1,10 +1,10 @@
 # Global Event Planner - Development Plan
 
-> **Son güncelleme:** 10 Haziran 2026
+> **Son güncelleme:** 11 Haziran 2026
 >
-> **Mevcut aşama:** Sprint 7 Item Management tamamlandı · Sprint 5 ertelendi
+> **Mevcut aşama:** Sprint 10 Testing & Release ilerliyor · Production Docker build doğrulandı · Sprint 9 Globalization büyük ölçüde tamamlandı · Sprint 8 Admin Panel tamamlandı · Sprint 5 ertelendi
 >
-> **Sıradaki öncelikler:** Admin panel (Sprint 8) → Notifications → Testing
+> **Sıradaki öncelikler:** Testing debt temizliği → Notifications → Release
 
 ## Genel Durum
 
@@ -33,7 +33,7 @@
 * [~] Contract System _(checkpoint + OTP onay var; admin CRUD eksik)_
 * [x] Event Management _(CRUD tamam; davet sistemi tamam)_
 * [x] Item Management
-* [ ] Admin Panel
+* [x] Admin Panel
 * [ ] Notifications
 * [ ] Testing
 
@@ -44,9 +44,9 @@
 * [x] Contract Screens _(kayıt modal + sözleşme onay lock ekranı)_
 * [~] Event Screens _(liste, oluştur, düzenle, detay tamam)_
 * [x] Item Screens _(Event detayındaki Malzemeler sekmesi)_
-* [ ] Admin Screens
-* [ ] PWA Integration
-* [ ] i18n Integration
+* [x] Admin Screens
+* [x] PWA Integration
+* [x] i18n Integration
 * [ ] Accessibility Improvements
 
 ---
@@ -434,27 +434,29 @@
 
 ### Backend
 
-* [ ] ROLE_ADMIN
-* [ ] Admin Authorization
-* [ ] Admin Dashboard API
+* [x] ROLE_ADMIN
+* [x] Admin Authorization
+* [x] Admin Dashboard API
 
 ### Frontend
 
-* [ ] Admin Login
-* [ ] Dashboard
+* [x] Admin Login
+* [x] Dashboard
 
 ---
 
 ## Contract Administration
 
-* [ ] Create Contract
-* [ ] Activate Contract
-* [ ] View History
+* [x] Create Contract
+* [x] Activate Contract
+* [x] View History
+* [x] Contract Localization _(TR/EN sözleşme içeriği ve admin panel çevirileri)_
 
 ### Definition Of Done
 
-* [ ] Admin panel usable
-* [ ] Contract management works
+* [x] Admin panel usable
+* [x] Contract management works
+* [x] Admin panel overview locale-aware
 
 ---
 
@@ -462,25 +464,26 @@
 
 ## Backend
 
-* [ ] Translation Component
-* [ ] Locale Detection
+* [x] Translation Component
+* [x] Locale Detection
 
 ## Frontend
 
-* [ ] react-i18next
-* [ ] Translation Files
-* [ ] Language Switcher
+* [x] react-i18next
+* [x] Translation Files
+* [x] Language Switcher
+* [x] Admin dashboard locale refresh
 
 ## Timezone
 
-* [ ] UTC Storage
-* [ ] Browser Conversion
+* [x] UTC Storage
+* [x] Browser Conversion
 
 ### Definition Of Done
 
-* [ ] English works
-* [ ] Turkish works
-* [ ] Timezone conversion verified
+* [x] English works
+* [x] Turkish works
+* [x] Timezone conversion verified
 
 ---
 
@@ -488,32 +491,32 @@
 
 ## Backend
 
-* [ ] Unit Tests
+* [x] Unit Tests _(ContractDiffService + EmailTemplateRenderer kapsandı)_
 * [ ] Integration Tests
-* [ ] Functional Tests
+* [x] Functional Tests _(Auth login basic request path kapsandı)_
 
 ## Frontend
 
-* [ ] Component Tests
-* [ ] Page Tests
+* [x] Component Tests _(LanguageSwitcher)_
+* [x] Page Tests _(Login + date utils)_
 
 ## Quality
 
-* [ ] PHPStan
-* [ ] ESLint
-* [ ] Prettier
+* [x] PHPStan
+* [x] ESLint
+* [x] Prettier
 
 ## Release
 
-* [ ] Production Docker Build
-* [ ] Environment Variables
-* [ ] Backup Strategy
+* [x] Production Docker Build _(frontend nginx + api nginx + php-fpm + postgres + redis için production compose akışı oluşturuldu ve backend image build doğrulandı)_
+* [x] Environment Variables _(`.env.prod.example`, README production notları ve compose production runtime env geçişleri eklendi)_
+* [x] Backup Strategy _(PostgreSQL backup/restore scriptleri, README operasyon notları ve `backups/` ignore kuralı eklendi)_
 
 ### Definition Of Done
 
-* [ ] Tests pass
-* [ ] Docker production build passes
-* [ ] Application deployable
+* [x] Tests pass
+* [x] Docker production build passes
+* [x] Application deployable _(production compose stack yerelde ayağa kaldırıldı; healthcheck, migration ve cache clear doğrulandı)_
 
 ---
 
@@ -537,7 +540,7 @@
 
 * [ ] Google Login
 * [ ] Apple Login
-* [ ] PWA Support _(manifest, service worker, offline cache, install prompt)_
+* [x] PWA Support _(manifest, service worker, offline cache, install prompt)_
 * [ ] Push Notifications
 * [ ] Event Reminder Jobs
 

@@ -7,11 +7,11 @@ use App\Dto\UpdateEventDto;
 use App\Entity\Event;
 use App\Entity\EventParticipant;
 use App\Entity\User;
+use App\Exception\ApiException;
 use App\Http\ApiResponse;
 use App\Repository\EventParticipantRepository;
 use App\Repository\EventRepository;
 use App\Service\EventService;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,13 +21,12 @@ use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/events')]
-class EventController extends AbstractController
+class EventController extends ApiController
 {
     #[Route('', name: 'api_events_list', methods: ['GET'])]
     public function list(EventRepository $eventRepository, EventService $eventService): JsonResponse
     {
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
         $events = $eventRepository->findByUser($user);
 
         return ApiResponse::success(array_map(
@@ -43,26 +42,15 @@ class EventController extends AbstractController
         ValidatorInterface $validator,
         EventService $eventService,
     ): JsonResponse {
-        try {
-            $dto = $serializer->deserialize($request->getContent(), CreateEventDto::class, 'json');
-        } catch (\Exception) {
-            return ApiResponse::error('INVALID_JSON', 'Geçersiz JSON verisi.', Response::HTTP_BAD_REQUEST);
-        }
+        $dto = $this->deserializeJson($request, CreateEventDto::class, $serializer);
+        $this->validateDto($dto, $validator);
 
-        $errors = $validator->validate($dto);
-        if (count($errors) > 0) {
-            $messages = array_map(fn ($e) => $e->getMessage(), iterator_to_array($errors));
-
-            return ApiResponse::error('VALIDATION_FAILED', implode(', ', $messages), Response::HTTP_BAD_REQUEST);
-        }
-
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
 
         try {
             $event = $eventService->create($user, $dto);
         } catch (\InvalidArgumentException $e) {
-            return ApiResponse::error('INVALID_DATE', $e->getMessage(), Response::HTTP_BAD_REQUEST);
+            throw new ApiException('INVALID_DATE', $e->getMessage(), Response::HTTP_BAD_REQUEST, previous: $e);
         }
 
         return ApiResponse::success(
@@ -89,8 +77,10 @@ class EventController extends AbstractController
             return ApiResponse::error('EVENT_NOT_FOUND', 'Davet koduyla eşleşen etkinlik bulunamadı.', Response::HTTP_NOT_FOUND);
         }
 
-        /** @var User $user */
         $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return ApiResponse::error('UNAUTHORIZED', 'Oturum bulunamadı.', Response::HTTP_UNAUTHORIZED);
+        }
         $owner = $event->getCreatedBy();
 
         if ($owner && $owner->getId()->equals($currentUser->getId())) {
@@ -118,8 +108,7 @@ class EventController extends AbstractController
             return ApiResponse::error('PARTICIPANT_NOT_FOUND', 'Davet bulunamadı.', Response::HTTP_NOT_FOUND);
         }
 
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
 
         if (!$participant->getUser()?->getId()->equals($user->getId())) {
             return ApiResponse::error('ACCESS_DENIED', 'Bu davet üzerinde işlem yapma yetkiniz yok.', Response::HTTP_FORBIDDEN);
@@ -136,7 +125,6 @@ class EventController extends AbstractController
     #[Route('/participants/{id}/reject', name: 'api_events_participant_reject', methods: ['POST'])]
     public function rejectInvitation(
         string $id,
-        EventRepository $eventRepository,
         EventParticipantRepository $participantRepository,
         EventService $eventService,
     ): JsonResponse {
@@ -146,8 +134,7 @@ class EventController extends AbstractController
             return ApiResponse::error('PARTICIPANT_NOT_FOUND', 'Davet bulunamadı.', Response::HTTP_NOT_FOUND);
         }
 
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
 
         if (!$participant->getUser()?->getId()->equals($user->getId())) {
             return ApiResponse::error('ACCESS_DENIED', 'Bu davet üzerinde işlem yapma yetkiniz yok.', Response::HTTP_FORBIDDEN);
@@ -164,7 +151,6 @@ class EventController extends AbstractController
     #[Route('/participants/{id}', name: 'api_events_participant_remove', methods: ['DELETE'])]
     public function removeParticipant(
         string $id,
-        EventRepository $eventRepository,
         EventParticipantRepository $participantRepository,
         EventService $eventService,
     ): JsonResponse {
@@ -176,8 +162,10 @@ class EventController extends AbstractController
 
         $event = $participant->getEvent();
 
-        /** @var User $user */
         $currentUser = $this->getUser();
+        if (!$currentUser instanceof User) {
+            return ApiResponse::error('UNAUTHORIZED', 'Oturum bulunamadı.', Response::HTTP_UNAUTHORIZED);
+        }
 
         if (!$event->getCreatedBy()?->getId()->equals($currentUser->getId())) {
             return ApiResponse::error('ACCESS_DENIED', 'Sadece etkinlik sahibi katılımcı çıkarabilir.', Response::HTTP_FORBIDDEN);
@@ -191,8 +179,7 @@ class EventController extends AbstractController
     #[Route('/invitations', name: 'api_events_invitations', methods: ['GET'])]
     public function invitations(EventParticipantRepository $participantRepository, EventService $eventService): JsonResponse
     {
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
         $participants = $participantRepository->findInvitedByUser($user);
 
         $data = array_map(
@@ -210,8 +197,7 @@ class EventController extends AbstractController
     #[Route('/joined', name: 'api_events_joined', methods: ['GET'])]
     public function joined(EventParticipantRepository $participantRepository, EventService $eventService): JsonResponse
     {
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
         $participants = $participantRepository->findAcceptedByUser($user);
 
         $data = array_map(
@@ -238,8 +224,7 @@ class EventController extends AbstractController
             return ApiResponse::error('EVENT_NOT_FOUND', 'Etkinlik bulunamadı.', Response::HTTP_NOT_FOUND);
         }
 
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
 
         if ($event->getCreatedBy()?->getId()->equals($user->getId())) {
             return ApiResponse::error('INVALID_REQUEST', 'Etkinlik sahibi kendi etkinliğinden ayrılamaz.', Response::HTTP_BAD_REQUEST);
@@ -266,8 +251,7 @@ class EventController extends AbstractController
             return $event;
         }
 
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
 
         return ApiResponse::success([
             'code' => $event->getInviteCode(),
@@ -284,8 +268,7 @@ class EventController extends AbstractController
             return $event;
         }
 
-        /** @var User $user */
-        $user = $this->getUser();
+        $user = $this->requireUser();
 
         return ApiResponse::success($eventService->serialize($event, $user));
     }
@@ -379,8 +362,7 @@ class EventController extends AbstractController
             return ApiResponse::error('EVENT_NOT_FOUND', 'Etkinlik bulunamadı.', Response::HTTP_NOT_FOUND);
         }
 
-        /** @var User $user */
-        $currentUser = $this->getUser();
+        $currentUser = $this->requireUser();
         $isOwner = $event->getCreatedBy()?->getId()->equals($currentUser->getId());
         $isParticipant = $participantRepository->findOneByEventAndUser($event, $currentUser) !== null;
 
@@ -389,5 +371,15 @@ class EventController extends AbstractController
         }
 
         return $event;
+    }
+
+    private function requireUser(): User
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException('Oturum bulunamadı.');
+        }
+
+        return $user;
     }
 }

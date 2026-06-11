@@ -39,6 +39,7 @@ security:
         - { path: ^/api/contracts/status, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/contracts/request-otp, roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/api/contracts/verify-otp, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/admin, roles: ROLE_ADMIN }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
