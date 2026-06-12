@@ -4,10 +4,19 @@ app:
     updated: 'Language updated.'
 
 auth:
+  login:
+    email_not_verified: 'You need to verify your email address before signing in.'
   verify_email:
     success: 'Your email address has been verified successfully!'
     missing_token: 'Verification token is missing.'
     invalid_token: 'Invalid or expired verification token.'
+  password_reset:
+    email_required: 'Please enter your email address.'
+    request_received: 'If an account exists for this email address, a password reset link has been sent.'
+    missing_fields: 'Reset token and new password are required.'
+    invalid_token: 'The password reset link is invalid.'
+    expired_token: 'The password reset link has expired.'
+    success: 'Your password has been reset successfully.'
 
 email:
   brand:
@@ -40,6 +49,17 @@ email:
     detail_action_label: 'Action'
     detail_action_value: 'Account sign-in'
     footer_note: 'The Bringo team will never ask you for this code.'
+  password_reset:
+    subject: 'Reset your Bringo password'
+    title: 'Reset your password'
+    intro: 'We received a request to reset your Bringo password.'
+    body_1: 'Use the button below to choose a new password.'
+    body_2: 'If you did not request this, you can ignore this email.'
+    text_body_1: 'Open the link below to choose a new password.'
+    text_body_2: 'If you did not request this, you can ignore this email.'
+    preheader: 'Your Bringo password reset link is ready.'
+    cta: 'Reset password'
+    footer_note: 'This password reset link is valid for 30 minutes.'
   contract:
     subject: 'Your Bringo contract approval code'
     title: 'Contract approval code'

@@ -3,10 +3,8 @@
 namespace App\Controller;
 
 use App\Entity\UserNotification;
-use App\Entity\User;
 use App\Http\ApiResponse;
 use App\Repository\UserNotificationRepository;
-use App\Repository\UserRepository;
 use App\Service\NotificationService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,7 +12,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Uid\Uuid;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 
 #[Route('/api/notifications')]
 class NotificationController extends ApiController
@@ -71,15 +68,8 @@ class NotificationController extends ApiController
         Request $request,
         UserNotificationRepository $notificationRepository,
         NotificationService $notificationService,
-        UserRepository $userRepository,
-        JWTTokenManagerInterface $jwtManager,
     ): Response {
-        $token = trim((string) $request->query->get('token', ''));
-        $user = $this->resolveUserFromToken($token, $userRepository, $jwtManager);
-
-        if (!$user instanceof User) {
-            return ApiResponse::error('UNAUTHORIZED', 'Unauthorized', Response::HTTP_UNAUTHORIZED);
-        }
+        $user = $this->requireUserEntity();
 
         $response = new StreamedResponse(function () use ($user, $notificationRepository, $notificationService): void {
             @set_time_limit(0);
@@ -120,25 +110,5 @@ class NotificationController extends ApiController
         $response->headers->set('X-Accel-Buffering', 'no');
 
         return $response;
-    }
-
-    private function resolveUserFromToken(
-        string $token,
-        UserRepository $userRepository,
-        JWTTokenManagerInterface $jwtManager,
-    ): ?User {
-        if ($token === '') {
-            return null;
-        }
-
-        try {
-            $payload = $jwtManager->parse($token);
-        } catch (\Throwable) {
-            return null;
-        }
-
-        $email = $payload['username'] ?? null;
-
-        return is_string($email) ? $userRepository->findOneBy(['email' => $email]) : null;
     }
 }

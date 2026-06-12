@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword';
 import ContractApproval from './pages/ContractApproval';
 import Dashboard from './pages/Dashboard';
 import EventForm from './pages/EventForm';
@@ -30,6 +31,8 @@ function App() {
         />
         <Route path="/register" element={isAuthenticated ? <Navigate to="/" /> : <Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/forgot-password" element={isAuthenticated ? <Navigate to="/" /> : <ForgotPassword />} />
+        <Route path="/reset-password" element={isAuthenticated ? <Navigate to="/" /> : <ForgotPassword />} />
         <Route
           path="/contract-approval"
           element={isAuthenticated ? <ContractApproval /> : <Navigate to="/login" />}

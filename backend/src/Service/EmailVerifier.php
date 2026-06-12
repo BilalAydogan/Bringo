@@ -3,18 +3,16 @@
 namespace App\Service;
 
 use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
-use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 class EmailVerifier
 {
     public function __construct(
         private MailerInterface $mailer,
-        private EntityManagerInterface $entityManager,
+        private AuthTokenStore $authTokenStore,
         private EmailTemplateRenderer $emailTemplateRenderer,
         private TranslatorInterface $translator,
         private RequestStack $requestStack,
@@ -24,17 +22,11 @@ class EmailVerifier
     public function sendEmailConfirmation(User $user, ?string $locale = null): void
     {
         $locale = $this->resolveLocale($locale);
-        $token = Uuid::v4()->toRfc4122();
-        $user->setVerificationToken($token);
+        $token = $this->authTokenStore->issueEmailVerification($user);
 
-        $this->entityManager->persist($user);
-        $this->entityManager->flush();
-
-        // In a real application, this URL should point to your frontend
-        $frontendUrl = $_ENV['FRONTEND_URL'] ?? 'http://localhost:5173';
         $verifyUrl = sprintf(
             '%s/verify-email?%s',
-            $frontendUrl,
+            $this->resolveFrontendUrl(),
             http_build_query([
                 'token' => $token,
                 'lang' => $locale,
@@ -73,6 +65,57 @@ class EmailVerifier
                 ctaLabel: $this->translator->trans('email.verification.cta', [], 'messages', $locale),
                 ctaUrl: $verifyUrl,
                 footerNote: $this->translator->trans('email.verification.footer_note', [], 'messages', $locale),
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
+            ));
+
+        $this->mailer->send($email);
+    }
+
+    public function sendPasswordReset(User $user, string $token, ?string $locale = null): void
+    {
+        $locale = $this->resolveLocale($locale);
+        $resetUrl = sprintf(
+            '%s/reset-password?%s',
+            $this->resolveFrontendUrl(),
+            http_build_query([
+                'token' => $token,
+                'lang' => $locale,
+            ])
+        );
+
+        $email = (new Email())
+            ->from('Bringo <noreply@bringo.test>')
+            ->to((string) $user->getEmail())
+            ->subject($this->translator->trans('email.password_reset.subject', [], 'messages', $locale))
+            ->html($this->emailTemplateRenderer->render(
+                title: $this->translator->trans('email.password_reset.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.password_reset.intro', [], 'messages', $locale),
+                paragraphs: [
+                    $this->translator->trans('email.password_reset.body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.password_reset.body_2', [], 'messages', $locale),
+                ],
+                preheader: $this->translator->trans('email.password_reset.preheader', [], 'messages', $locale),
+                greeting: $this->greetingFor($user, $locale),
+                ctaLabel: $this->translator->trans('email.password_reset.cta', [], 'messages', $locale),
+                ctaUrl: $resetUrl,
+                footerNote: $this->translator->trans('email.password_reset.footer_note', [], 'messages', $locale),
+                documentLocale: $locale,
+                brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
+                securityBanner: $this->translator->trans('email.brand.security', [], 'messages', $locale),
+                footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
+            ))
+            ->text($this->emailTemplateRenderer->renderText(
+                title: $this->translator->trans('email.password_reset.title', [], 'messages', $locale),
+                intro: $this->translator->trans('email.password_reset.intro', [], 'messages', $locale),
+                paragraphs: [
+                    $this->translator->trans('email.password_reset.text_body_1', [], 'messages', $locale),
+                    $this->translator->trans('email.password_reset.text_body_2', [], 'messages', $locale),
+                ],
+                greeting: $this->greetingFor($user, $locale),
+                ctaLabel: $this->translator->trans('email.password_reset.cta', [], 'messages', $locale),
+                ctaUrl: $resetUrl,
+                footerNote: $this->translator->trans('email.password_reset.footer_note', [], 'messages', $locale),
                 brandTagline: $this->translator->trans('email.brand.tagline', [], 'messages', $locale),
                 footerDisclaimer: $this->translator->trans('email.brand.footer', [], 'messages', $locale),
             ));
@@ -147,5 +190,10 @@ class EmailVerifier
         $candidate = strtolower(str_replace('_', '-', $candidate));
 
         return str_starts_with($candidate, 'en') ? 'en' : 'tr';
+    }
+
+    private function resolveFrontendUrl(): string
+    {
+        return rtrim($_ENV['FRONTEND_URL'] ?? $_ENV['DEFAULT_URI'] ?? 'http://localhost:5173', '/');
     }
 }

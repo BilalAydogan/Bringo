@@ -38,7 +38,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   );
   const menuRef = useRef<HTMLDivElement | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const notificationsStreamAbortRef = useRef<AbortController | null>(null);
 
   const handleLogout = async () => {
     setMenuOpen(false);
@@ -151,8 +151,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
+      notificationsStreamAbortRef.current?.abort();
+      notificationsStreamAbortRef.current = null;
       return;
     }
 
@@ -189,36 +189,105 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const token = localStorage.getItem('token');
 
     if (!user || !token) {
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
+      notificationsStreamAbortRef.current?.abort();
+      notificationsStreamAbortRef.current = null;
       return;
     }
 
+    let cancelled = false;
+    let reconnectTimer: number | null = null;
     const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(
       /\/$/,
       '',
     );
-    const streamUrl = `${apiBaseUrl}/notifications/stream?token=${encodeURIComponent(token)}`;
-    const eventSource = new EventSource(streamUrl);
-    eventSourceRef.current = eventSource;
+    const streamUrl = `${apiBaseUrl}/notifications/stream`;
 
-    eventSource.addEventListener('notifications', (event) => {
+    const connect = async () => {
+      const controller = new AbortController();
+      notificationsStreamAbortRef.current = controller;
+
       try {
-        const payload = JSON.parse((event as MessageEvent).data) as NotificationListResponse;
-        void applyNotificationPayload(payload);
-      } catch {
-        // Ignore malformed stream payloads.
-      }
-    });
+        const response = await fetch(streamUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'text/event-stream',
+          },
+          signal: controller.signal,
+        });
 
-    eventSource.onerror = () => {
-      void loadNotifications();
+        if (!response.ok || !response.body) {
+          throw new Error(`Notification stream failed with status ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop() ?? '';
+
+          for (const rawEvent of events) {
+            const lines = rawEvent.split('\n');
+            let eventName = 'message';
+            const dataLines: string[] = [];
+
+            for (const line of lines) {
+              if (line.startsWith(':') || line.trim() === '') {
+                continue;
+              }
+
+              if (line.startsWith('event:')) {
+                eventName = line.slice(6).trim();
+                continue;
+              }
+
+              if (line.startsWith('data:')) {
+                dataLines.push(line.slice(5).trim());
+              }
+            }
+
+            if (eventName !== 'notifications' || dataLines.length === 0) {
+              continue;
+            }
+
+            try {
+              const payload = JSON.parse(dataLines.join('\n')) as NotificationListResponse;
+              await applyNotificationPayload(payload);
+            } catch {
+              // Ignore malformed stream payloads.
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          void loadNotifications();
+          reconnectTimer = window.setTimeout(() => {
+            void connect();
+          }, 3000);
+        }
+      } finally {
+        if (notificationsStreamAbortRef.current === controller) {
+          notificationsStreamAbortRef.current = null;
+        }
+      }
     };
 
+    void connect();
+
     return () => {
-      eventSource.close();
-      if (eventSourceRef.current === eventSource) {
-        eventSourceRef.current = null;
+      cancelled = true;
+      notificationsStreamAbortRef.current?.abort();
+      notificationsStreamAbortRef.current = null;
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
       }
     };
   }, [applyNotificationPayload, loadNotifications, user]);

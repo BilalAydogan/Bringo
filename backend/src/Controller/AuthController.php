@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -78,6 +79,7 @@ class AuthController extends ApiController
     public function verifyEmail(
         Request $request,
         EntityManagerInterface $em,
+        \App\Service\AuthTokenStore $authTokenStore,
         TranslatorInterface $translator,
     ): JsonResponse
     {
@@ -95,9 +97,22 @@ class AuthController extends ApiController
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $user = $em->getRepository(User::class)->findOneBy(['verificationToken' => $token]);
+        $token = trim((string) $token);
+        $userId = $authTokenStore->resolveEmailVerificationUserId($token);
 
-        if (!$user) {
+        if (!is_string($userId) || $userId === '' || !Uuid::isValid($userId)) {
+            return $this->json([
+                'success' => false,
+                'error' => [
+                    'code' => 'INVALID_TOKEN',
+                    'message' => $translator->trans('auth.verify_email.invalid_token', [], 'messages', $locale),
+                ]
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
+        $user = $em->getRepository(User::class)->find(Uuid::fromString($userId));
+
+        if (!$user instanceof User) {
             return $this->json([
                 'success' => false,
                 'error' => [
@@ -108,8 +123,8 @@ class AuthController extends ApiController
         }
 
         $user->setVerified(true);
-        $user->setVerificationToken(null);
         $em->flush();
+        $authTokenStore->clearEmailVerificationToken($token, $userId);
 
         return $this->json([
             'success' => true,
@@ -122,11 +137,14 @@ class AuthController extends ApiController
         Request $request,
         EntityManagerInterface $em,
         UserPasswordHasherInterface $passwordHasher,
-        \App\Service\EmailVerifier $emailVerifier
+        \App\Service\EmailVerifier $emailVerifier,
+        \App\Service\AuthTokenStore $authTokenStore,
+        TranslatorInterface $translator,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
         $email = $data['username'] ?? null;
         $password = $data['password'] ?? null;
+        $locale = $request->getLocale();
 
         if (!$email || !$password) {
             return $this->json(['message' => 'Missing credentials'], Response::HTTP_BAD_REQUEST);
@@ -137,10 +155,15 @@ class AuthController extends ApiController
             return $this->json(['message' => 'Invalid credentials'], Response::HTTP_UNAUTHORIZED);
         }
 
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $user->setTwoFactorCode($code);
-        $user->setTwoFactorExpiresAt(new \DateTimeImmutable('+10 minutes'));
-        $em->flush();
+        if (!$user->isVerified()) {
+            return ApiResponse::error(
+                'EMAIL_NOT_VERIFIED',
+                $translator->trans('auth.login.email_not_verified', [], 'messages', $locale),
+                Response::HTTP_FORBIDDEN,
+            );
+        }
+
+        $code = $authTokenStore->issueLoginCode($user);
 
         $emailVerifier->send2FaCode($user, $code, $request->getLocale());
 
@@ -150,10 +173,111 @@ class AuthController extends ApiController
         ]);
     }
 
+    #[Route('/forgot-password', name: 'api_auth_forgot_password', methods: ['POST'])]
+    public function forgotPassword(
+        Request $request,
+        EntityManagerInterface $em,
+        \App\Service\EmailVerifier $emailVerifier,
+        \App\Service\AuthTokenStore $authTokenStore,
+        TranslatorInterface $translator,
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $email = is_array($data) ? ($data['email'] ?? null) : null;
+        $locale = $request->getLocale();
+
+        if (!is_string($email) || trim($email) === '') {
+            return ApiResponse::error(
+                'EMAIL_REQUIRED',
+                $translator->trans('auth.password_reset.email_required', [], 'messages', $locale),
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $user = $em->getRepository(User::class)->findOneBy(['email' => trim($email)]);
+        if ($user instanceof User) {
+            $token = $authTokenStore->issuePasswordReset($user);
+            $emailVerifier->sendPasswordReset($user, $token, $locale);
+        }
+
+        return ApiResponse::success(
+            null,
+            $translator->trans('auth.password_reset.request_received', [], 'messages', $locale),
+        );
+    }
+
+    #[Route('/reset-password', name: 'api_auth_reset_password', methods: ['POST'])]
+    public function resetPassword(
+        Request $request,
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $passwordHasher,
+        \App\Service\AuthTokenStore $authTokenStore,
+        TranslatorInterface $translator,
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $locale = $request->getLocale();
+
+        if (!is_array($data)) {
+            return ApiResponse::error(
+                'INVALID_JSON',
+                $translator->trans('profile.invalid_json', [], 'messages', $locale),
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $token = $data['token'] ?? null;
+        $password = $data['password'] ?? null;
+
+        if (!is_string($token) || trim($token) === '' || !is_string($password) || trim($password) === '') {
+            return ApiResponse::error(
+                'VALIDATION_FAILED',
+                $translator->trans('auth.password_reset.missing_fields', [], 'messages', $locale),
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        if (mb_strlen($password) < 6) {
+            return ApiResponse::error(
+                'PASSWORD_TOO_SHORT',
+                $translator->trans('profile.password_too_short', [], 'messages', $locale),
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $token = trim($token);
+        $userId = $authTokenStore->resolvePasswordResetUserId($token);
+
+        if (!is_string($userId) || $userId === '' || !Uuid::isValid($userId)) {
+            return ApiResponse::error(
+                'INVALID_TOKEN',
+                $translator->trans('auth.password_reset.invalid_token', [], 'messages', $locale),
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $user = $em->getRepository(User::class)->find(Uuid::fromString($userId));
+        if (!$user instanceof User) {
+            return ApiResponse::error(
+                'INVALID_TOKEN',
+                $translator->trans('auth.password_reset.invalid_token', [], 'messages', $locale),
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $user->setPassword($passwordHasher->hashPassword($user, $password));
+        $em->flush();
+        $authTokenStore->clearPasswordResetToken($token, $userId);
+
+        return ApiResponse::success(
+            null,
+            $translator->trans('auth.password_reset.success', [], 'messages', $locale),
+        );
+    }
+
     #[Route('/verify-2fa', name: 'api_auth_verify_2fa', methods: ['POST'])]
     public function verify2fa(
         Request $request,
         EntityManagerInterface $em,
+        \App\Service\AuthTokenStore $authTokenStore,
         \Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface $jwtManager,
         \Gesdinet\JWTRefreshTokenBundle\Generator\RefreshTokenGeneratorInterface $refreshTokenGenerator,
         \Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface $refreshTokenManager
@@ -171,13 +295,9 @@ class AuthController extends ApiController
             return $this->json(['message' => 'User not found'], Response::HTTP_NOT_FOUND);
         }
 
-        if ($user->getTwoFactorCode() !== $code || $user->getTwoFactorExpiresAt() < new \DateTimeImmutable()) {
+        if (!$authTokenStore->verifyLoginCode($user, $code)) {
             return $this->json(['message' => 'Invalid or expired 2FA code'], Response::HTTP_BAD_REQUEST);
         }
-
-        $user->setTwoFactorCode(null);
-        $user->setTwoFactorExpiresAt(null);
-        $em->flush();
 
         $token = $jwtManager->create($user);
         

@@ -4,10 +4,19 @@ app:
     updated: 'Dil güncellendi.'
 
 auth:
+  login:
+    email_not_verified: 'Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekiyor.'
   verify_email:
     success: 'E-posta adresiniz başarıyla doğrulandı!'
     missing_token: 'Doğrulama belirteci eksik.'
     invalid_token: 'Geçersiz veya süresi dolmuş doğrulama belirteci.'
+  password_reset:
+    email_required: 'Lütfen e-posta adresinizi girin.'
+    request_received: 'Bu e-posta adresi için bir hesap varsa parola sıfırlama bağlantısı gönderildi.'
+    missing_fields: 'Sıfırlama belirteci ve yeni parola gerekli.'
+    invalid_token: 'Parola sıfırlama bağlantısı geçersiz.'
+    expired_token: 'Parola sıfırlama bağlantısının süresi dolmuş.'
+    success: 'Parolanız başarıyla sıfırlandı.'
 
 email:
   brand:
@@ -40,6 +49,17 @@ email:
     detail_action_label: 'İşlem'
     detail_action_value: 'Hesap girişi'
     footer_note: 'Bringo ekibi bu kodu sizden hiçbir zaman istemez.'
+  password_reset:
+    subject: 'Bringo parolanızı sıfırlayın'
+    title: 'Parolanızı sıfırlayın'
+    intro: 'Bringo parolanızı sıfırlamak için bir istek aldık.'
+    body_1: 'Yeni bir parola seçmek için aşağıdaki butonu kullanın.'
+    body_2: 'Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.'
+    text_body_1: 'Yeni bir parola seçmek için aşağıdaki bağlantıyı açın.'
+    text_body_2: 'Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.'
+    preheader: 'Bringo parola sıfırlama bağlantınız hazır.'
+    cta: 'Parolayı sıfırla'
+    footer_note: 'Bu parola sıfırlama bağlantısı 30 dakika boyunca geçerlidir.'
   contract:
     subject: 'Bringo sözleşme onay kodunuz'
     title: 'Sözleşme onay kodunuz'

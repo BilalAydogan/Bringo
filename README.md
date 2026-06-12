@@ -1,5 +1,9 @@
 # Bringo
 
+## Release Checklist
+
+Release öncesi go/no-go kontrolü için [RELEASE_CHECKLIST.md](/home/bilal/Masaüstü/Bringo/RELEASE_CHECKLIST.md) dosyasını kullanın.
+
 ## Production Docker
 
 Production stack is defined in [docker-compose.prod.yml](/home/bilal/Masaüstü/Bringo/docker-compose.prod.yml).
@@ -12,6 +16,7 @@ Required backend/runtime values:
 
 * `APP_SECRET`
 * `DEFAULT_URI`
+* `FRONTEND_URL`
 * `DATABASE_URL`
 * `REDIS_URL`
 * `MAILER_DSN`
@@ -26,6 +31,8 @@ Required database/frontend values:
 * `POSTGRES_DB`
 * `VITE_API_URL`
 * `FRONTEND_PORT`
+
+`FRONTEND_URL` must point to the public frontend origin used in email links such as `/verify-email`. Do not leave it as `localhost` in production.
 
 ### JWT keys
 

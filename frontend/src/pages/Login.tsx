@@ -217,6 +217,15 @@ export default function Login() {
                 </button>
               </form>
 
+              <div className="mt-4 text-right">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-medium text-neutral-400 transition-colors hover:text-purple-400"
+                >
+                  {t('auth.forgotPassword')}
+                </Link>
+              </div>
+
               <p className="mt-8 text-center text-sm text-neutral-400">
                 {t('auth.noAccount')}{' '}
                 <Link

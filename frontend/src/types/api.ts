@@ -16,4 +16,4 @@ export interface ApiResponse<T> {
   data: T;
 }
 
-export interface PaginatedResponse<T> extends ApiResponse<PaginatedData<T>> {}
+export type PaginatedResponse<T> = ApiResponse<PaginatedData<T>>;

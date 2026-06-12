@@ -39,17 +39,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isVerified = false;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $verificationToken = null;
-
     #[ORM\Column(length: 5, options: ['default' => 'tr'])]
     private string $preferredLocale = 'tr';
-
-    #[ORM\Column(length: 6, nullable: true)]
-    private ?string $twoFactorCode = null;
-
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?\DateTimeImmutable $twoFactorExpiresAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $createdAt = null;
@@ -155,18 +146,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getVerificationToken(): ?string
-    {
-        return $this->verificationToken;
-    }
-
-    public function setVerificationToken(?string $verificationToken): static
-    {
-        $this->verificationToken = $verificationToken;
-
-        return $this;
-    }
-
     public function getPreferredLocale(): string
     {
         return $this->preferredLocale;
@@ -176,30 +155,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $normalized = strtolower(str_replace('_', '-', trim($preferredLocale)));
         $this->preferredLocale = in_array($normalized, ['tr', 'en'], true) ? $normalized : 'tr';
-
-        return $this;
-    }
-
-    public function getTwoFactorCode(): ?string
-    {
-        return $this->twoFactorCode;
-    }
-
-    public function setTwoFactorCode(?string $twoFactorCode): static
-    {
-        $this->twoFactorCode = $twoFactorCode;
-
-        return $this;
-    }
-
-    public function getTwoFactorExpiresAt(): ?\DateTimeImmutable
-    {
-        return $this->twoFactorExpiresAt;
-    }
-
-    public function setTwoFactorExpiresAt(?\DateTimeImmutable $twoFactorExpiresAt): static
-    {
-        $this->twoFactorExpiresAt = $twoFactorExpiresAt;
 
         return $this;
     }

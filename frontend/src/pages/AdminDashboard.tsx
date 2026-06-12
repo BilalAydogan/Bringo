@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import axiosInstance from '../api/axios';
 import AppLayout from '../components/AppLayout';
 import type { AdminContract, AdminDashboardResponse } from '../types/admin';

@@ -2,9 +2,9 @@
 
 > **Son güncelleme:** 12 Haziran 2026
 >
-> **Mevcut aşama:** Sprint 10 Testing & Release ilerliyor · Notifications ve reminder akışı tamamlandı · Sprint 9 Globalization tamamlandı · Sprint 8 Admin Panel tamamlandı · Sprint 5 ertelendi
+> **Mevcut aşama:** Sprint 10 Testing & Release ilerliyor · Notifications ve reminder akışı tamamlandı · Sprint 9 Globalization tamamlandı · Sprint 8 Admin Panel tamamlandı · Auth transient state tamamen Redis'e taşındı
 >
-> **Sıradaki öncelikler:** Integration test borcu → Accessibility polish → Release hardening
+> **Sıradaki öncelikler:** Contract checkpoint lock bugfix → Integration test borcu → Release hardening
 
 ## Genel Durum
 
@@ -30,7 +30,7 @@
 * [x] Symfony Setup
 * [x] Database Setup
 * [x] Authentication
-* [~] Contract System _(checkpoint + OTP onay var; admin CRUD eksik)_
+* [~] Contract System _(admin CRUD tamam; contract checkpoint smoke test'te lock enforcement açığı var)_
 * [x] Event Management _(CRUD tamam; davet sistemi tamam)_
 * [x] Item Management
 * [x] Admin Panel
@@ -317,7 +317,7 @@
 ### Backend
 
 * [x] OTP Generator
-* [ ] Redis Storage _(şu an User entity'sinde twoFactorCode alanında tutuluyor)_
+* [x] Redis Storage _(2FA code, password reset token ve email verification token Redis'e taşındı)_
 * [x] Verification Endpoint _(POST /api/auth/verify-2fa)_
 
 ### Frontend
@@ -562,7 +562,7 @@
 * [ ] Monitoring
 * [ ] Metrics Dashboard
 * [ ] RegisterService / LoginService ayrıştırması
-* [ ] 2FA kodlarını Redis'e taşıma (plan ile uyum)
+* [ ] Contract checkpoint enforcement bugfix _(pending contract varken bazı korumalı endpoint'ler hâlâ açılıyor)_
 
 ---
 
@@ -593,13 +593,28 @@
 
 ## Redis Keys
 
-user_2fa:{user_id}
+auth:2fa:{user_id}
 
-contract_otp:{user_id}
+contract_otp:{user_id}:{contract_id}
 
-email_verify:{user_id}
+auth:password_reset:{token}
 
-> **Not:** Sözleşme OTP kodları Redis'te (`contract_otp:{user_id}:{contract_id}`) tutuluyor. Login 2FA kodları hâlâ veritabanında.
+auth:password_reset:user:{user_id}
+
+auth:email_verify:{token}
+
+auth:email_verify:user:{user_id}
+
+> **Not:** Login 2FA kodları, password reset token'ları ve email verification token'ları Redis'te tutuluyor. Veritabanında transient auth state bırakılmadı.
+
+## Release Smoke Notes
+
+* [x] Register → verify-email → login → 2FA → me → logout akışı doğrulandı
+* [x] Forgot-password → reset-password → tekrar login akışı doğrulandı
+* [x] Refresh token akışı smoke test ile doğrulandı
+* [x] Admin route'ları user rolüyle `403 ACCESS_DENIED` dönüyor
+* [x] Admin route'ları admin rolüyle açılıyor
+* [~] Contract status `has_pending=true` dönüyor ancak pending kullanıcı `/api/events` ve `/api/auth/me` endpoint'lerine hâlâ erişebiliyor; lock enforcement düzeltilmeli
 
 ---
 
