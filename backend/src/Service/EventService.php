@@ -29,9 +29,11 @@ class EventService
     public function create(User $user, CreateEventDto $dto): Event
     {
         $event = new Event();
+        $timezone = $this->parseTimezone($dto->timezone);
         $event->setTitle($dto->title);
         $event->setDescription($dto->description);
-        $event->setDate($this->parseDate($dto->date));
+        $event->setTimezone($timezone->getName());
+        $event->setDate($this->parseDate($dto->date, $timezone));
         $event->setLocation($dto->location);
         $event->setCreatedBy($user);
         $event->setInviteCode($this->generateInviteCode($event));
@@ -43,6 +45,10 @@ class EventService
 
     public function update(Event $event, UpdateEventDto $dto): Event
     {
+        $timezone = $dto->timezone !== null
+            ? $this->parseTimezone($dto->timezone)
+            : new \DateTimeZone($event->getTimezone());
+
         if ($dto->title !== null) {
             $event->setTitle($dto->title);
         }
@@ -52,11 +58,15 @@ class EventService
         }
 
         if ($dto->date !== null) {
-            $event->setDate($this->parseDate($dto->date));
+            $event->setDate($this->parseDate($dto->date, $timezone));
         }
 
         if ($dto->location !== null) {
             $event->setLocation($dto->location);
+        }
+
+        if ($dto->timezone !== null) {
+            $event->setTimezone($timezone->getName());
         }
 
         $this->eventRepository->save($event, true);
@@ -131,6 +141,7 @@ class EventService
             'title' => $event->getTitle(),
             'description' => $event->getDescription(),
             'date' => $this->formatUtc($event->getDate()),
+            'timezone' => $event->getTimezone(),
             'location' => $event->getLocation(),
             'invite_code' => $event->getInviteCode(),
             'created_by' => [
@@ -218,12 +229,21 @@ class EventService
         return $code;
     }
 
-    private function parseDate(string $value): \DateTimeImmutable
+    private function parseDate(string $value, \DateTimeZone $timezone): \DateTimeImmutable
     {
         try {
-            return (new \DateTimeImmutable($value))->setTimezone(new \DateTimeZone('UTC'));
+            return (new \DateTimeImmutable($value, $timezone))->setTimezone(new \DateTimeZone('UTC'));
         } catch (\Exception) {
             throw new \InvalidArgumentException('Geçersiz tarih formatı.');
+        }
+    }
+
+    private function parseTimezone(string $value): \DateTimeZone
+    {
+        try {
+            return new \DateTimeZone(trim($value));
+        } catch (\Exception) {
+            throw new \InvalidArgumentException('Geçersiz zaman dilimi.');
         }
     }
 

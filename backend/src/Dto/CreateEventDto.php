@@ -18,4 +18,8 @@ class CreateEventDto
 
     #[Assert\Length(max: 255, maxMessage: 'Konum en fazla {{ limit }} karakter olabilir.')]
     public ?string $location = null;
+
+    #[Assert\NotBlank(message: 'Etkinlik zaman dilimi gereklidir.')]
+    #[Assert\Length(max: 64, maxMessage: 'Zaman dilimi geçersiz.')]
+    public string $timezone = 'UTC';
 }

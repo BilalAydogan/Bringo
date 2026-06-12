@@ -42,6 +42,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $verificationToken = null;
 
+    #[ORM\Column(length: 5, options: ['default' => 'tr'])]
+    private string $preferredLocale = 'tr';
+
     #[ORM\Column(length: 6, nullable: true)]
     private ?string $twoFactorCode = null;
 
@@ -160,6 +163,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setVerificationToken(?string $verificationToken): static
     {
         $this->verificationToken = $verificationToken;
+
+        return $this;
+    }
+
+    public function getPreferredLocale(): string
+    {
+        return $this->preferredLocale;
+    }
+
+    public function setPreferredLocale(string $preferredLocale): static
+    {
+        $normalized = strtolower(str_replace('_', '-', trim($preferredLocale)));
+        $this->preferredLocale = in_array($normalized, ['tr', 'en'], true) ? $normalized : 'tr';
 
         return $this;
     }

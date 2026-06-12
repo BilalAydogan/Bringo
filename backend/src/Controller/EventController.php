@@ -24,15 +24,21 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class EventController extends ApiController
 {
     #[Route('', name: 'api_events_list', methods: ['GET'])]
-    public function list(EventRepository $eventRepository, EventService $eventService): JsonResponse
+    public function list(Request $request, EventRepository $eventRepository, EventService $eventService): JsonResponse
     {
         $user = $this->requireUser();
-        $events = $eventRepository->findByUser($user);
+        $page = max(1, $request->query->getInt('page', 1));
+        $limit = max(1, min(50, $request->query->getInt('limit', 20)));
 
-        return ApiResponse::success(array_map(
+        $paginator = $eventRepository->paginateByUser($user, $page, $limit);
+        $total = count($paginator);
+
+        $data = array_map(
             fn (Event $event) => $eventService->serialize($event, $user),
-            $events,
-        ));
+            iterator_to_array($paginator),
+        );
+
+        return ApiResponse::paginated($data, $total, $page, $limit);
     }
 
     #[Route('', name: 'api_events_create', methods: ['POST'])]
@@ -177,10 +183,14 @@ class EventController extends ApiController
     }
 
     #[Route('/invitations', name: 'api_events_invitations', methods: ['GET'])]
-    public function invitations(EventParticipantRepository $participantRepository, EventService $eventService): JsonResponse
+    public function invitations(Request $request, EventParticipantRepository $participantRepository, EventService $eventService): JsonResponse
     {
         $user = $this->requireUser();
-        $participants = $participantRepository->findInvitedByUser($user);
+        $page = max(1, $request->query->getInt('page', 1));
+        $limit = max(1, min(50, $request->query->getInt('limit', 20)));
+
+        $paginator = $participantRepository->paginateInvitedByUser($user, $page, $limit);
+        $total = count($paginator);
 
         $data = array_map(
             fn (EventParticipant $participant) => [
@@ -188,24 +198,28 @@ class EventController extends ApiController
                 'status' => $participant->getStatus(),
                 'event' => $eventService->serialize($participant->getEvent(), $user),
             ],
-            $participants,
+            iterator_to_array($paginator),
         );
 
-        return ApiResponse::success($data);
+        return ApiResponse::paginated($data, $total, $page, $limit);
     }
 
     #[Route('/joined', name: 'api_events_joined', methods: ['GET'])]
-    public function joined(EventParticipantRepository $participantRepository, EventService $eventService): JsonResponse
+    public function joined(Request $request, EventParticipantRepository $participantRepository, EventService $eventService): JsonResponse
     {
         $user = $this->requireUser();
-        $participants = $participantRepository->findAcceptedByUser($user);
+        $page = max(1, $request->query->getInt('page', 1));
+        $limit = max(1, min(50, $request->query->getInt('limit', 20)));
+
+        $paginator = $participantRepository->paginateAcceptedByUser($user, $page, $limit);
+        $total = count($paginator);
 
         $data = array_map(
             fn (EventParticipant $participant) => $eventService->serialize($participant->getEvent(), $user),
-            $participants,
+            iterator_to_array($paginator),
         );
 
-        return ApiResponse::success($data);
+        return ApiResponse::paginated($data, $total, $page, $limit);
     }
 
     #[Route('/{id}/leave', name: 'api_events_leave', methods: ['POST'])]

@@ -327,7 +327,8 @@ export default function EventDetail() {
           <div className="space-y-4 mb-8">
             <div className="flex items-start gap-3 text-neutral-300">
               <Calendar className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" />
-              <span>{formatEventDate(event.date)}</span>
+              <span>{formatEventDate(event.date, event.timezone)}</span>
+              <span className="text-xs text-neutral-500">({event.timezone})</span>
             </div>
 
             {event.location && (

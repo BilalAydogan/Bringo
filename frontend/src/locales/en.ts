@@ -23,6 +23,13 @@ const en = {
   nav: {
     profile: 'Profile',
   },
+  notifications: {
+    title: 'Notifications',
+    unread: '{{count}} unread',
+    empty: 'No notifications yet.',
+    enable: 'Enable browser notifications',
+    markAllRead: 'Mark all read',
+  },
   auth: {
     loginTitle: 'Welcome back',
     loginAdminTitle: 'Admin sign in',
@@ -83,6 +90,8 @@ const en = {
     owned: 'Created by Me',
     joined: 'Joined',
     past: 'Past Events',
+    previous: 'Previous',
+    next: 'Next',
     emptyTitle: 'No events yet',
     emptySubtitle: 'Start by creating your first event.',
     loadError: 'Could not load events.',
@@ -98,6 +107,8 @@ const en = {
     descriptionLabel: 'Description',
     descriptionPlaceholder: 'Event description (optional)',
     dateLabel: 'Date and Time',
+    timezoneLabel: 'Event Time Zone',
+    timezoneHelp: 'The event date and reminder messages will use this time zone.',
     locationLabel: 'Location',
     locationPlaceholder: 'Location (optional)',
     submitEdit: 'Update',

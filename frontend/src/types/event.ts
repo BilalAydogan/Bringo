@@ -14,6 +14,7 @@ export interface Event {
   title: string;
   description: string | null;
   date: string;
+  timezone: string;
   location: string | null;
   invite_code: string;
   created_by: {
@@ -38,5 +39,6 @@ export interface EventFormData {
   title: string;
   description: string;
   date: string;
+  timezone: string;
   location: string;
 }

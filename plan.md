@@ -1,10 +1,10 @@
 # Global Event Planner - Development Plan
 
-> **Son güncelleme:** 11 Haziran 2026
+> **Son güncelleme:** 12 Haziran 2026
 >
-> **Mevcut aşama:** Sprint 10 Testing & Release ilerliyor · Production Docker build doğrulandı · Sprint 9 Globalization büyük ölçüde tamamlandı · Sprint 8 Admin Panel tamamlandı · Sprint 5 ertelendi
+> **Mevcut aşama:** Sprint 10 Testing & Release ilerliyor · Notifications ve reminder akışı tamamlandı · Sprint 9 Globalization tamamlandı · Sprint 8 Admin Panel tamamlandı · Sprint 5 ertelendi
 >
-> **Sıradaki öncelikler:** Testing debt temizliği → Notifications → Release
+> **Sıradaki öncelikler:** Integration test borcu → Accessibility polish → Release hardening
 
 ## Genel Durum
 
@@ -34,20 +34,20 @@
 * [x] Event Management _(CRUD tamam; davet sistemi tamam)_
 * [x] Item Management
 * [x] Admin Panel
-* [ ] Notifications
-* [ ] Testing
+* [x] Notifications _(user notification entity/repository/service, reminder log, reminder command, in-app API, SSE stream)_
+* [~] Testing _(unit + functional + bazı frontend testleri var; integration coverage eksik)_
 
 ## Frontend
 
 * [x] Project Setup
 * [x] Authentication Screens
 * [x] Contract Screens _(kayıt modal + sözleşme onay lock ekranı)_
-* [~] Event Screens _(liste, oluştur, düzenle, detay tamam)_
+* [x] Event Screens _(liste, oluştur, düzenle, detay, davet, leave flow, mobil infinite scroll)_
 * [x] Item Screens _(Event detayındaki Malzemeler sekmesi)_
 * [x] Admin Screens
 * [x] PWA Integration
 * [x] i18n Integration
-* [ ] Accessibility Improvements
+* [~] Accessibility Improvements _(temel responsive/mobil polish yapıldı; tam audit yok)_
 
 ---
 
@@ -266,6 +266,7 @@
 * [x] Contract Listing Endpoint _(GET /api/contracts/active)_
 * [x] Static Contract Seed _(migration ile varsayılan Kullanıcı Sözleşmesi)_
 * [x] Contract Acceptance on Register _(UserContract kaydı + IP adresi)_
+* [x] Contract Localization Storage _(TR/EN içerik ayrı alanlarda saklanıyor)_
 
 ### Frontend
 
@@ -437,11 +438,13 @@
 * [x] ROLE_ADMIN
 * [x] Admin Authorization
 * [x] Admin Dashboard API
+* [x] Admin Creation Endpoint/UI Flow
 
 ### Frontend
 
 * [x] Admin Login
 * [x] Dashboard
+* [x] Admin Management Tab
 
 ---
 
@@ -473,11 +476,14 @@
 * [x] Translation Files
 * [x] Language Switcher
 * [x] Admin dashboard locale refresh
+* [x] Contract / auth / event detail string coverage
 
 ## Timezone
 
 * [x] UTC Storage
 * [x] Browser Conversion
+* [x] Event Timezone Selection
+* [x] Timezone-aware reminder rendering
 
 ### Definition Of Done
 
@@ -488,6 +494,32 @@
 ---
 
 # Sprint 10 - Testing & Release
+
+## Notifications
+
+### Backend
+
+* [x] User Notification Entity/Repository
+* [x] Notification API _(list, read, read-all)_
+* [x] Event Reminder Jobs _(console command + reminder log)_
+* [x] Reminder Email Templates _(i18n + branded HTML/text)_
+* [x] Real-time Notification Stream _(SSE)_
+
+### Frontend
+
+* [x] Navbar Notification Center
+* [x] Browser Notifications _(permission + local dedupe)_
+* [x] Real-time Updates _(SSE + polling fallback)_
+* [x] Mobile Notification Dropdown Polish
+
+### Definition Of Done
+
+* [x] Reminder emails sent
+* [x] In-app notifications stored
+* [x] Notifications appear without page refresh
+* [x] Mobile dropdown usable
+
+---
 
 ## Backend
 

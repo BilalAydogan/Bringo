@@ -6,6 +6,7 @@ use App\Entity\Contract;
 use App\Entity\User;
 use App\Entity\UserContract;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -21,6 +22,17 @@ class ContractRepository extends ServiceEntityRepository
     public function findActiveContract(): ?Contract
     {
         return $this->findOneBy(['isActive' => true], ['version' => 'DESC']);
+    }
+
+    public function paginateAll(int $page = 1, int $limit = 20): Paginator
+    {
+        $query = $this->createQueryBuilder('c')
+            ->orderBy('c.version', 'DESC')
+            ->getQuery()
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        return new Paginator($query);
     }
 
     public function findPreviousContract(Contract $activeContract): ?Contract

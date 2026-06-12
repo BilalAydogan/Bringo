@@ -16,4 +16,7 @@ class UpdateEventDto
 
     #[Assert\Length(max: 255, maxMessage: 'Konum en fazla {{ limit }} karakter olabilir.')]
     public ?string $location = null;
+
+    #[Assert\Length(max: 64, maxMessage: 'Zaman dilimi geçersiz.')]
+    public ?string $timezone = null;
 }

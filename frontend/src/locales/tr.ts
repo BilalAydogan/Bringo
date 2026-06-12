@@ -23,6 +23,13 @@ const tr = {
   nav: {
     profile: 'Profil',
   },
+  notifications: {
+    title: 'Bildirimler',
+    unread: '{{count}} okunmamış',
+    empty: 'Henüz bildirim yok.',
+    enable: 'Tarayıcı bildirimlerini aç',
+    markAllRead: 'Tümünü okundu yap',
+  },
   auth: {
     loginTitle: 'Tekrar Hoş Geldiniz',
     loginAdminTitle: 'Admin Girişi',
@@ -83,6 +90,8 @@ const tr = {
     owned: 'Oluşturduğum',
     joined: 'Katıldığım',
     past: 'Geçmiş Etkinlikler',
+    previous: 'Önceki',
+    next: 'Sonraki',
     emptyTitle: 'Henüz etkinlik yok',
     emptySubtitle: 'İlk etkinliğinizi oluşturarak başlayın.',
     loadError: 'Etkinlikler yüklenemedi.',
@@ -98,6 +107,8 @@ const tr = {
     descriptionLabel: 'Açıklama',
     descriptionPlaceholder: 'Etkinlik açıklaması (isteğe bağlı)',
     dateLabel: 'Tarih ve Saat',
+    timezoneLabel: 'Etkinlik Zaman Dilimi',
+    timezoneHelp: 'Etkinlik tarihi ve hatırlatma mesajları bu zaman dilimine göre gösterilir.',
     locationLabel: 'Konum',
     locationPlaceholder: 'Konum (isteğe bağlı)',
     submitEdit: 'Güncelle',

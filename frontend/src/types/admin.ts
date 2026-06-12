@@ -34,5 +34,5 @@ export interface AdminDashboardResponse {
   };
   active_contract: AdminContract | null;
   recent_users: AdminUser[];
-  contracts: AdminContract[];
+  recent_contracts: AdminContract[];
 }

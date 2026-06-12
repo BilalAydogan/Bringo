@@ -16,6 +16,10 @@ final class Version20260611120000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
+        if ($schema->hasTable('contract_translation')) {
+            return;
+        }
+
         $this->addSql(<<<'SQL'
 CREATE TABLE contract_translation (
     id UUID NOT NULL,
@@ -34,6 +38,10 @@ SQL);
 
     public function down(Schema $schema): void
     {
+        if (!$schema->hasTable('contract_translation')) {
+            return;
+        }
+
         $this->addSql('ALTER TABLE contract_translation DROP CONSTRAINT fk_contract_translation_contract');
         $this->addSql('DROP INDEX uniq_contract_translation_locale');
         $this->addSql('DROP INDEX idx_contract_translation_contract');

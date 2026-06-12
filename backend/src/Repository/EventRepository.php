@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Event;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -26,6 +27,19 @@ class EventRepository extends ServiceEntityRepository
             ->orderBy('e.date', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function paginateByUser(User $user, int $page = 1, int $limit = 20): Paginator
+    {
+        $query = $this->createQueryBuilder('e')
+            ->where('e.createdBy = :user')
+            ->setParameter('user', $user)
+            ->orderBy('e.date', 'ASC')
+            ->getQuery()
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        return new Paginator($query);
     }
 
     public function save(Event $event, bool $flush = false): void

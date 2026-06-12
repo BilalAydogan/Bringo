@@ -44,7 +44,7 @@ class AdminController extends ApiController
     #[Route('/dashboard', name: 'api_admin_dashboard', methods: ['GET'])]
     public function dashboard(Request $request): JsonResponse
     {
-        $contracts = $this->contractRepository->findBy([], ['version' => 'DESC']);
+        $recentContracts = $this->contractRepository->findBy([], ['version' => 'DESC'], 4);
         $activeContract = $this->contractRepository->findActiveContract();
         $locale = $request->getLocale();
 
@@ -69,9 +69,9 @@ class AdminController extends ApiController
                 ],
                 $this->userRepository->findRecent(6),
             ),
-            'contracts' => array_map(
+            'recent_contracts' => array_map(
                 fn (Contract $contract) => $this->contractService->serializeContract($contract, $locale),
-                $contracts,
+                $recentContracts,
             ),
         ]);
     }
@@ -125,6 +125,7 @@ class AdminController extends ApiController
         $user->setFirstName($firstName);
         $user->setLastName($lastName);
         $user->setEmail($email);
+        $user->setPreferredLocale((string) $request->getLocale());
         $user->setRoles(['ROLE_ADMIN']);
         $user->setVerified(true);
         $user->setPassword($passwordHasher->hashPassword($user, $password));
@@ -145,13 +146,19 @@ class AdminController extends ApiController
     #[Route('/contracts', name: 'api_admin_contracts_list', methods: ['GET'])]
     public function listContracts(Request $request): JsonResponse
     {
-        $contracts = $this->contractRepository->findBy([], ['version' => 'DESC']);
+        $page = max(1, $request->query->getInt('page', 1));
+        $limit = max(1, min(50, $request->query->getInt('limit', 20)));
         $locale = $request->getLocale();
 
-        return ApiResponse::success(array_map(
+        $paginator = $this->contractRepository->paginateAll($page, $limit);
+        $total = count($paginator);
+
+        $data = array_map(
             fn (Contract $contract) => $this->contractService->serializeContract($contract, $locale),
-            $contracts,
-        ));
+            iterator_to_array($paginator),
+        );
+
+        return ApiResponse::paginated($data, $total, $page, $limit);
     }
 
     #[Route('/contracts', name: 'api_admin_contracts_create', methods: ['POST'])]

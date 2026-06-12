@@ -53,6 +53,34 @@ email:
     detail_validity_value: '10 minutes'
     footer_note: 'If the code expires, you can request a new one from inside Bringo.'
 
+event_reminder:
+  notification:
+    day_before:
+      title: 'Upcoming event reminder'
+      message: '%event% starts within the next 24 hours. Date: %date%.'
+    hour_before:
+      title: 'Event starts soon'
+      message: '%event% starts within the next hour. Date: %date%.'
+  email:
+    brand_tagline: 'Event reminders and activity updates'
+    security_banner: 'Bringo Reminder'
+    footer_disclaimer: 'This message was sent automatically for your Bringo account.'
+    cta: 'Open event'
+    footer_note: 'You are receiving this reminder because you created or joined this event.'
+    details:
+      event: 'Event'
+      date: 'Date'
+      location: 'Location'
+      location_unspecified: 'Not specified'
+    day_before:
+      subject: 'Upcoming event reminder'
+      intro: 'This is a reminder for %event%.'
+      body: 'The event begins within the next 24 hours. Review attendance, materials, and timing before it starts.'
+    hour_before:
+      subject: 'Your event starts soon'
+      intro: 'This is a reminder for %event%.'
+      body: 'The event begins within the next hour. Make sure your participants and items are ready.'
+
 contract:
   request_otp_sent: 'The verification code has been sent to your email address.'
   approved: 'The contract has been approved successfully.'
@@ -84,3 +112,11 @@ admin:
     version_required: 'Version cannot be blank.'
     version_positive: 'Version must be a positive number.'
     required_required: 'Required status must be specified.'
+
+api_error:
+  access_denied: 'You do not have permission for this action.'
+  unauthorized: 'You need to log in for this action.'
+  validation_failed: 'The data you entered does not match the validation rules.'
+  not_found: 'The requested resource was not found.'
+  internal_server_error: 'An unexpected server error occurred.'
+  http_error: 'HTTP error.'

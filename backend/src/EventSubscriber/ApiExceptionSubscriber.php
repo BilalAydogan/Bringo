@@ -12,11 +12,15 @@ use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class ApiExceptionSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly LoggerInterface $logger,
+        private readonly TranslatorInterface $translator,
         #[Autowire('%kernel.debug%')]
         private readonly bool $debug = false,
     ) {
@@ -49,11 +53,39 @@ final class ApiExceptionSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $locale = $request->getLocale();
+
         if ($throwable instanceof AccessDeniedHttpException) {
             $event->setResponse(ApiResponse::error(
                 'ACCESS_DENIED',
-                $throwable->getMessage() !== '' ? $throwable->getMessage() : 'Bu işlem için yetkiniz yok.',
+                $throwable->getMessage() !== '' ? $throwable->getMessage() : $this->translator->trans('api_error.access_denied', [], 'messages', $locale),
                 Response::HTTP_FORBIDDEN,
+            ));
+
+            return;
+        }
+
+        if ($throwable instanceof AuthenticationException) {
+            $event->setResponse(ApiResponse::error(
+                'UNAUTHORIZED',
+                $this->translator->trans('api_error.unauthorized', [], 'messages', $locale),
+                Response::HTTP_UNAUTHORIZED,
+            ));
+
+            return;
+        }
+
+        if ($throwable instanceof ValidationFailedException) {
+            $violations = [];
+            foreach ($throwable->getViolations() as $violation) {
+                $violations[$violation->getPropertyPath()] = $violation->getMessage();
+            }
+
+            $event->setResponse(ApiResponse::error(
+                'VALIDATION_FAILED',
+                $this->translator->trans('api_error.validation_failed', [], 'messages', $locale),
+                Response::HTTP_BAD_REQUEST,
+                $violations
             ));
 
             return;
@@ -62,7 +94,7 @@ final class ApiExceptionSubscriber implements EventSubscriberInterface
         if ($throwable instanceof NotFoundHttpException) {
             $event->setResponse(ApiResponse::error(
                 'NOT_FOUND',
-                'İstenen kaynak bulunamadı.',
+                $this->translator->trans('api_error.not_found', [], 'messages', $locale),
                 Response::HTTP_NOT_FOUND,
             ));
 
@@ -72,7 +104,7 @@ final class ApiExceptionSubscriber implements EventSubscriberInterface
         if ($throwable instanceof HttpExceptionInterface) {
             $event->setResponse(ApiResponse::error(
                 'HTTP_ERROR',
-                $throwable->getMessage() !== '' ? $throwable->getMessage() : Response::$statusTexts[$throwable->getStatusCode()] ?? 'HTTP hatası.',
+                $throwable->getMessage() !== '' ? $throwable->getMessage() : ($this->translator->trans('api_error.http_error', [], 'messages', $locale) ?: (Response::$statusTexts[$throwable->getStatusCode()] ?? 'HTTP error.')),
                 $throwable->getStatusCode(),
             ));
 
@@ -86,7 +118,7 @@ final class ApiExceptionSubscriber implements EventSubscriberInterface
 
         $message = $this->debug && $throwable->getMessage() !== ''
             ? $throwable->getMessage()
-            : 'Beklenmeyen bir sunucu hatası oluştu.';
+            : $this->translator->trans('api_error.internal_server_error', [], 'messages', $locale);
 
         $event->setResponse(ApiResponse::error(
             'INTERNAL_SERVER_ERROR',

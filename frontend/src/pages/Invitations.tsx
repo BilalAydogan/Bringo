@@ -165,7 +165,7 @@ export default function Invitations() {
                   <div className="mt-1 flex items-center gap-3 text-sm text-neutral-400">
                     <span className="inline-flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5" />
-                      {formatEventDate(item.event.date)}
+                      {formatEventDate(item.event.date, item.event.timezone)}
                     </span>
                     {item.event.location && (
                       <span className="hidden sm:inline-flex items-center gap-2">

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axiosInstance from '../api/axios';
 import AppLayout from '../components/AppLayout';
 import type { AdminContract, AdminDashboardResponse } from '../types/admin';
+import type { PaginatedResponse, PaginationMeta } from '../types/api';
 import { formatDateTime } from '../utils/date';
 import {
   Activity,
@@ -43,6 +44,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('overview');
+  const [contracts, setContracts] = useState<AdminContract[]>([]);
+  const [contractsMeta, setContractsMeta] = useState<PaginationMeta | null>(null);
+  const [loadingContracts, setLoadingContracts] = useState(false);
   const [creating, setCreating] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,9 +72,25 @@ export default function AdminDashboard() {
     }
   }, [t]);
 
+  const loadContracts = useCallback(async (page: number = 1) => {
+    setLoadingContracts(true);
+    try {
+      const response = await axiosInstance.get<PaginatedResponse<AdminContract>>(
+        `/admin/contracts?page=${page}&limit=20`,
+      );
+      setContracts(response.data.data.items);
+      setContractsMeta(response.data.data.meta);
+    } catch {
+      // fallback
+    } finally {
+      setLoadingContracts(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadDashboard();
-  }, [i18n.resolvedLanguage, i18n.language, loadDashboard]);
+    loadContracts(1);
+  }, [i18n.resolvedLanguage, i18n.language, loadDashboard, loadContracts]);
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -96,6 +116,7 @@ export default function AdminDashboard() {
       });
       setCreateForm(emptyContractForm);
       await loadDashboard();
+      await loadContracts(1);
       setTab('contracts');
     } catch (error: unknown) {
       alert(getApiErrorMessage(error, t('adminDashboard.createError')));
@@ -139,6 +160,7 @@ export default function AdminDashboard() {
             : [],
       });
       await loadDashboard();
+      await loadContracts(contractsMeta?.currentPage ?? 1);
       setEditingId(null);
     } catch (error: unknown) {
       alert(getApiErrorMessage(error, t('adminDashboard.updateError')));
@@ -152,6 +174,7 @@ export default function AdminDashboard() {
     try {
       await axiosInstance.post(`/admin/contracts/${contractId}/activate`);
       await loadDashboard();
+      await loadContracts(contractsMeta?.currentPage ?? 1);
     } catch (error: unknown) {
       alert(getApiErrorMessage(error, t('adminDashboard.activateError')));
     } finally {
@@ -193,7 +216,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const contracts = data?.contracts ?? [];
+  const dashboardContracts = data?.recent_contracts ?? [];
   const stats = data?.stats;
 
   return (
@@ -209,6 +232,32 @@ export default function AdminDashboard() {
               {t('adminDashboard.title')}
             </h2>
             <p className="text-neutral-400 mt-2">{t('adminDashboard.subtitle')}</p>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2 bg-neutral-900/80 p-1.5 rounded-2xl border border-neutral-800">
+            {[
+              { key: 'overview' as const, label: t('adminDashboard.bottomNav.overview'), icon: BarChart3 },
+              { key: 'contracts' as const, label: t('adminDashboard.bottomNav.contracts'), icon: FileText },
+              { key: 'admins' as const, label: t('adminDashboard.bottomNav.admins'), icon: UserCog },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = tab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setTab(item.key)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-neutral-100 text-neutral-950 shadow-sm'
+                      : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-amber-600' : 'text-neutral-500'}`} />
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -498,11 +547,11 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <span className="text-xs text-neutral-500">
-                    {t('adminDashboard.records', { count: contracts.length })}
+                    {t('adminDashboard.records', { count: stats?.contracts ?? 0 })}
                   </span>
                 </div>
                 <div className="space-y-3">
-                  {contracts.slice(0, 4).map((contract) => (
+                  {dashboardContracts.slice(0, 4).map((contract) => (
                     <div
                       key={contract.id}
                       className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4"
@@ -618,7 +667,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {!loading && !error && data && tab === 'contracts' && (
+        {tab === 'contracts' && (
           <div className="space-y-6">
             <form
               onSubmit={handleCreate}
@@ -709,8 +758,12 @@ export default function AdminDashboard() {
               </label>
             </form>
 
-            <div className="space-y-3">
-              {contracts.map((contract) => {
+            <div className="space-y-4">
+              {loadingContracts ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+                </div>
+              ) : contracts.map((contract) => {
                 const isEditing = editingId === contract.id;
                 const isSaving = savingId === contract.id;
 
@@ -874,21 +927,37 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
+
+              {contractsMeta && contractsMeta.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8 pb-4">
+                  <button
+                    onClick={() => loadContracts(contractsMeta.currentPage - 1)}
+                    disabled={contractsMeta.currentPage === 1 || loadingContracts}
+                    className="px-4 py-2 text-sm font-medium rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 disabled:opacity-50"
+                  >
+                    {t('dashboard.previous', 'Önceki')}
+                  </button>
+                  <span className="text-sm text-neutral-400">
+                    {contractsMeta.currentPage} / {contractsMeta.totalPages}
+                  </span>
+                  <button
+                    onClick={() => loadContracts(contractsMeta.currentPage + 1)}
+                    disabled={contractsMeta.currentPage === contractsMeta.totalPages || loadingContracts}
+                    className="px-4 py-2 text-sm font-medium rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 disabled:opacity-50"
+                  >
+                    {t('dashboard.next', 'Sonraki')}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {!loading && !error && data && contracts.length === 0 && tab === 'contracts' && (
+        {!loadingContracts && !error && contracts.length === 0 && tab === 'contracts' && (
           <div className="rounded-2xl border border-dashed border-neutral-800 bg-neutral-900/60 p-8 text-center text-neutral-400">
             {t('adminDashboard.noContracts')}
           </div>
         )}
-
-        <div className="mt-8">
-          <Link to="/" className="text-sm text-neutral-400 hover:text-white transition-colors">
-            {t('common.backToHome')}
-          </Link>
-        </div>
 
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-800 bg-neutral-950/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl sm:hidden">
           <div className="mx-auto grid max-w-md grid-cols-3 gap-2">

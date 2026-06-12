@@ -51,6 +51,7 @@ class AuthController extends ApiController
         $user->setFirstName($dto->firstName);
         $user->setLastName($dto->lastName);
         $user->setEmail($dto->email);
+        $user->setPreferredLocale((string) $request->getLocale());
         $user->setPassword($passwordHasher->hashPassword($user, $dto->password));
 
         $em->persist($user);
@@ -233,6 +234,7 @@ class AuthController extends ApiController
                 'lastName' => $user->getLastName(),
                 'roles' => $user->getRoles(),
                 'is_verified' => $user->isVerified(),
+                'preferred_locale' => $user->getPreferredLocale(),
                 'created_at' => $user->getCreatedAt()?->format(\DateTimeInterface::ATOM),
             ],
         ]);

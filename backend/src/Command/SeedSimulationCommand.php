@@ -140,6 +140,7 @@ class SeedSimulationCommand extends Command
             $user->setLastName(sprintf('User %02d', $i));
             $user->setEmail(sprintf('%s%02d@%s', self::EMAIL_PREFIX, $i, self::EMAIL_DOMAIN));
             $user->setVerified(true);
+            $user->setPreferredLocale($i % 2 === 0 ? 'en' : 'tr');
             $user->setRoles([]);
             $user->setPassword($this->passwordHasher->hashPassword($user, self::DEFAULT_PASSWORD));
 
@@ -178,6 +179,7 @@ class SeedSimulationCommand extends Command
             $event->setTitle(sprintf('Simulated Event %02d', $eventNumber));
             $event->setDescription($this->buildEventDescription($eventNumber, $isPast));
             $event->setLocation($this->randomLocation($eventNumber));
+            $event->setTimezone('Europe/Istanbul');
             $event->setDate($eventDate->setTimezone(new \DateTimeZone('UTC')));
             $event->setCreatedBy($owner);
             $event->setInviteCode(strtoupper(Uuid::v4()->toBase58()));

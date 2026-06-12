@@ -1,14 +1,94 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { AxiosResponse } from 'axios';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../api/axios';
 import AppLayout from '../components/AppLayout';
 import { formatEventDate, isEventPast } from '../utils/date';
+import type { PaginatedResponse } from '../types/api';
 import type { Event } from '../types/event';
 import { Plus, Calendar, MapPin, Loader2, CalendarDays, Users, Clock3 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getApiErrorMessage } from '../utils/api';
 
 type Tab = 'upcoming' | 'owned' | 'joined' | 'past';
+const PAGE_SIZE = 12;
+
+function compareEventDates(firstDate: string, secondDate: string): number {
+  const first = new Date(firstDate).getTime();
+  const second = new Date(secondDate).getTime();
+
+  if (Number.isNaN(first) && Number.isNaN(second)) return 0;
+  if (Number.isNaN(first)) return 1;
+  if (Number.isNaN(second)) return -1;
+
+  return first - second;
+}
+
+function normalizeEvents(value: unknown): Event[] {
+  return extractEvents(value);
+}
+
+function sortEvents(events: unknown, direction: 'asc' | 'desc' = 'asc'): Event[] {
+  return [...normalizeEvents(events)].sort((a, b) => {
+    const result = compareEventDates(a.date, b.date);
+
+    return direction === 'asc' ? result : -result;
+  });
+}
+
+function isEvent(value: unknown): value is Event {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const event = value as Partial<Event>;
+
+  return (
+    typeof event.id === 'string' &&
+    typeof event.title === 'string' &&
+    typeof event.date === 'string'
+  );
+}
+
+function extractEvents(payload: unknown): Event[] {
+  if (Array.isArray(payload)) {
+    return payload.filter(isEvent);
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const data = payload as { items?: unknown };
+
+  return Array.isArray(data.items) ? data.items.filter(isEvent) : [];
+}
+
+async function fetchAllEvents(url: string): Promise<Event[]> {
+  const firstResponse = await axiosInstance.get<PaginatedResponse<Event>>(url);
+  const firstItems = extractEvents(firstResponse.data?.data);
+  const totalPages = firstResponse.data?.data?.meta?.totalPages ?? 1;
+
+  if (totalPages <= 1) {
+    return firstItems;
+  }
+
+  const requests: Array<Promise<AxiosResponse<PaginatedResponse<Event>>>> = [];
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const separator = url.includes('?') ? '&' : '?';
+    requests.push(
+      axiosInstance.get<PaginatedResponse<Event>>(`${url}${separator}page=${page}`),
+    );
+  }
+
+  const responses = await Promise.all(requests);
+
+  return responses.reduce<Event[]>(
+    (allEvents, response) => [...allEvents, ...extractEvents(response.data?.data)],
+    firstItems,
+  );
+}
 
 export default function Dashboard() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -16,6 +96,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<Tab>('upcoming');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -24,13 +107,13 @@ export default function Dashboard() {
       setError('');
 
       try {
-        const [ownedRes, joinedRes] = await Promise.all([
-          axiosInstance.get('/events'),
-          axiosInstance.get('/events/joined'),
+        const [ownedEvents, joinedPageEvents] = await Promise.all([
+          fetchAllEvents('/events?limit=50'),
+          fetchAllEvents('/events/joined?limit=50'),
         ]);
 
-        setEvents(ownedRes.data.data ?? []);
-        setJoinedEvents(joinedRes.data.data ?? []);
+        setEvents(normalizeEvents(ownedEvents));
+        setJoinedEvents(normalizeEvents(joinedPageEvents));
       } catch (error: unknown) {
         setError(getApiErrorMessage(error, t('dashboard.loadError')));
       } finally {
@@ -41,12 +124,28 @@ export default function Dashboard() {
     load();
   }, [t]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tab]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 639px)');
+    const updateViewport = () => setIsMobile(mediaQuery.matches);
+
+    updateViewport();
+    mediaQuery.addEventListener('change', updateViewport);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateViewport);
+    };
+  }, []);
+
   const owned = useMemo(
-    () => [...events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    () => sortEvents(events),
     [events],
   );
   const joined = useMemo(
-    () => [...joinedEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    () => sortEvents(joinedEvents),
     [joinedEvents],
   );
   const merged = useMemo(
@@ -58,13 +157,19 @@ export default function Dashboard() {
   const pastJoined = useMemo(() => joined.filter((e) => isEventPast(e.date)), [joined]);
   const pastMerged = useMemo(
     () =>
-      [...pastOwned, ...pastJoined].filter(
-        (e, i, arr) => arr.findIndex((x) => x.id === e.id) === i,
+      sortEvents(
+        [...pastOwned, ...pastJoined].filter(
+          (e, i, arr) => arr.findIndex((x) => x.id === e.id) === i,
+        ),
+        'desc',
       ),
     [pastOwned, pastJoined],
   );
 
-  const upcomingMerged = useMemo(() => merged.filter((e) => !isEventPast(e.date)), [merged]);
+  const upcomingMerged = useMemo(
+    () => sortEvents(merged.filter((e) => !isEventPast(e.date)), 'asc'),
+    [merged],
+  );
 
   const displayed =
     tab === 'upcoming'
@@ -74,6 +179,40 @@ export default function Dashboard() {
         : tab === 'joined'
           ? joined.filter((e) => !isEventPast(e.date))
           : pastMerged;
+  const totalPages = Math.max(1, Math.ceil(displayed.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedDisplayed = isMobile
+    ? displayed.slice(0, safePage * PAGE_SIZE)
+    : displayed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    if (!isMobile || safePage >= totalPages || loading) {
+      return;
+    }
+
+    const target = loadMoreRef.current;
+
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+
+        if (entry?.isIntersecting) {
+          setCurrentPage((page) => Math.min(totalPages, page + 1));
+        }
+      },
+      {
+        rootMargin: '160px 0px',
+      },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [isMobile, safePage, totalPages, loading]);
 
   const isEmpty = displayed.length === 0;
   const tabs: Array<{ key: Tab; label: string; icon: typeof CalendarDays; activeClass: string }> = [
@@ -164,7 +303,7 @@ export default function Dashboard() {
 
         {!loading && !error && !isEmpty && (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {displayed.map((event) => {
+            {paginatedDisplayed.map((event) => {
               const past = isEventPast(event.date);
               return (
                 <Link
@@ -189,7 +328,7 @@ export default function Dashboard() {
                   <div className="space-y-2 text-sm text-neutral-400">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-blue-400 shrink-0" />
-                      <span>{formatEventDate(event.date)}</span>
+                      <span>{formatEventDate(event.date, event.timezone)}</span>
                     </div>
                     {event.location && (
                       <div className="flex items-center gap-2">
@@ -201,6 +340,36 @@ export default function Dashboard() {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {!loading && !error && !isMobile && displayed.length > PAGE_SIZE && (
+          <div className="mt-6 flex items-center justify-center gap-2 pb-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={safePage === 1}
+              className="rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-300 transition-colors disabled:opacity-50"
+            >
+              {t('dashboard.previous', 'Previous')}
+            </button>
+            <span className="text-sm text-neutral-400">
+              {safePage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+              disabled={safePage === totalPages}
+              className="rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-300 transition-colors disabled:opacity-50"
+            >
+              {t('dashboard.next', 'Next')}
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && isMobile && safePage < totalPages && (
+          <div ref={loadMoreRef} className="flex justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
           </div>
         )}
 

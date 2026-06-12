@@ -1,23 +1,39 @@
+#####################################
+# ENV FILES (CRITICAL)
+#####################################
+.env
+.env.*
+!.env.example
+!.env.prod.example
 
-###> symfony/framework-bundle ###
+# Symfony env
 /.env.local
 /.env.local.php
 /.env.*.local
+
+#####################################
+# SYMFONY
+#####################################
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
 /var/
 /vendor/
-###< symfony/framework-bundle ###
 
-###> lexik/jwt-authentication-bundle ###
+#####################################
+# JWT (CRITICAL)
+#####################################
 /config/jwt/*.pem
-###< lexik/jwt-authentication-bundle ###
 
-###> phpstan/phpstan ###
-phpstan.neon
-###< phpstan/phpstan ###
-
-###> phpunit/phpunit ###
+#####################################
+# TEST & DEV FILES
+#####################################
 /phpunit.xml
 /.phpunit.cache/
-###< phpunit/phpunit ###
+phpstan.neon
+
+#####################################
+# IDE / OS
+#####################################
+.vscode/
+.idea/
+.DS_Store

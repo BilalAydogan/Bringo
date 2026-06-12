@@ -53,6 +53,34 @@ email:
     detail_validity_value: '10 dakika'
     footer_note: 'Kod süresi dolarsa Bringo içinden yeni bir kod isteyebilirsiniz.'
 
+event_reminder:
+  notification:
+    day_before:
+      title: 'Yaklaşan etkinlik hatırlatması'
+      message: '%event% etkinliği önümüzdeki 24 saat içinde başlıyor. Tarih: %date%.'
+    hour_before:
+      title: 'Etkinlik yakında başlıyor'
+      message: '%event% etkinliği önümüzdeki 1 saat içinde başlıyor. Tarih: %date%.'
+  email:
+    brand_tagline: 'Etkinlik hatırlatmaları ve aktivite güncellemeleri'
+    security_banner: 'Bringo Hatırlatma'
+    footer_disclaimer: 'Bu mesaj Bringo hesabınız için otomatik olarak gönderildi.'
+    cta: 'Etkinliği aç'
+    footer_note: 'Bu hatırlatmayı etkinliği oluşturduğunuz veya katıldığınız için alıyorsunuz.'
+    details:
+      event: 'Etkinlik'
+      date: 'Tarih'
+      location: 'Konum'
+      location_unspecified: 'Belirtilmedi'
+    day_before:
+      subject: 'Yaklaşan etkinlik hatırlatması'
+      intro: '%event% etkinliği için hatırlatma gönderiyoruz.'
+      body: 'Etkinlik önümüzdeki 24 saat içinde başlıyor. Katılım, malzeme ve zaman planını gözden geçirebilirsiniz.'
+    hour_before:
+      subject: 'Etkinliğiniz çok yakında başlıyor'
+      intro: '%event% etkinliği için hatırlatma gönderiyoruz.'
+      body: 'Etkinlik önümüzdeki 1 saat içinde başlıyor. Katılımcı ve malzeme durumunu son kez kontrol etmeniz iyi olur.'
+
 contract:
   request_otp_sent: 'Doğrulama kodu e-posta adresinize gönderildi.'
   approved: 'Sözleşme başarıyla onaylandı.'
@@ -84,3 +112,11 @@ admin:
     version_required: 'Sürüm boş olamaz.'
     version_positive: 'Sürüm pozitif bir sayı olmalıdır.'
     required_required: 'Zorunluluk durumu belirtilmelidir.'
+
+api_error:
+  access_denied: 'Bu işlem için yetkiniz yok.'
+  unauthorized: 'Bu işlem için giriş yapmanız gerekiyor.'
+  validation_failed: 'Girdiğiniz veriler doğrulama kurallarına uymuyor.'
+  not_found: 'İstenen kaynak bulunamadı.'
+  internal_server_error: 'Beklenmeyen bir sunucu hatası oluştu.'
+  http_error: 'HTTP hatası.'

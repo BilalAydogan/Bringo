@@ -2,8 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosInstance from '../api/axios';
 import AppLayout from '../components/AppLayout';
-import { datetimeLocalToIso, toDatetimeLocalValue } from '../utils/date';
-import { ArrowLeft, Loader2, MapPin, Calendar, FileText } from 'lucide-react';
+import {
+  datetimeLocalToIso,
+  getBrowserTimeZone,
+  getSupportedTimeZones,
+  toDatetimeLocalValue,
+} from '../utils/date';
+import { ArrowLeft, Loader2, MapPin, Calendar, FileText, Globe2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getApiErrorMessage } from '../utils/api';
 
@@ -15,6 +20,7 @@ export default function EventForm() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
+  const [timezone, setTimezone] = useState(getBrowserTimeZone());
   const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(isEdit);
   const [submitting, setSubmitting] = useState(false);
@@ -30,7 +36,8 @@ export default function EventForm() {
         const event = response.data.data;
         setTitle(event.title);
         setDescription(event.description ?? '');
-        setDate(toDatetimeLocalValue(event.date));
+        setTimezone(event.timezone ?? getBrowserTimeZone());
+        setDate(toDatetimeLocalValue(event.date, event.timezone));
         setLocation(event.location ?? '');
       })
       .catch((error: unknown) => {
@@ -49,7 +56,8 @@ export default function EventForm() {
     const payload = {
       title,
       description: description || null,
-      date: datetimeLocalToIso(date),
+      date: datetimeLocalToIso(date, timezone),
+      timezone,
       location: location || null,
     };
 
@@ -133,6 +141,27 @@ export default function EventForm() {
                 placeholder={t('eventForm.descriptionPlaceholder')}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              {t('eventForm.timezoneLabel')}
+            </label>
+            <div className="relative">
+              <Globe2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
+              <select
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="block w-full appearance-none pl-12 pr-4 py-3.5 bg-neutral-900 border border-neutral-800 rounded-xl text-neutral-100 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none"
+              >
+                {getSupportedTimeZones().map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">{t('eventForm.timezoneHelp')}</p>
           </div>
 
           <div>

@@ -13,10 +13,10 @@ describe('date utils', () => {
   });
 
   it('converts datetime-local values to ISO strings', () => {
-    const iso = datetimeLocalToIso('2026-06-11T10:30');
+    const iso = datetimeLocalToIso('2026-06-11T10:30', 'Europe/Istanbul');
 
-    expect(iso).toMatch(/^2026-06-11T/);
-    expect(toDatetimeLocalValue(iso)).toBe('2026-06-11T10:30');
+    expect(iso).toBe('2026-06-11T07:30:00.000Z');
+    expect(toDatetimeLocalValue(iso, 'Europe/Istanbul')).toBe('2026-06-11T10:30');
   });
 
   it('marks past events relative to now', () => {
